@@ -1,0 +1,28 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+
+# Local library data and generated outputs
+data/
+exports/
+logs/
+reports/
+*.sqlite
+*.sqlite3
+*.db
+*.xlsx
+*.xls
+*.log
+
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Internal planning and development records
+AGENTS.md
+docs/dev/
+docs/dev-log-template.md

@@ -1,0 +1,83 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+from openpyxl import Workbook
+from openpyxl.styles import Alignment, Font, PatternFill
+from openpyxl.utils import get_column_letter
+
+from .models import Work
+
+
+HEADERS = [
+    "RJ号",
+    "本地标题",
+    "官网标题",
+    "社团",
+    "声优",
+    "发售日",
+    "标签",
+    "总售出数",
+    "平均评分",
+    "评价人数",
+    "封面URL",
+    "作品URL",
+    "本地路径",
+    "抓取状态",
+    "失败原因",
+    "最后抓取时间",
+    "指标失败原因",
+    "指标最后刷新时间",
+]
+
+
+def export_xlsx(works: list[Work], output_path: str | Path) -> Path:
+    path = Path(output_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = "DLsite作品"
+    sheet.append(HEADERS)
+
+    for cell in sheet[1]:
+        cell.font = Font(bold=True)
+        cell.fill = PatternFill("solid", fgColor="EAF2F8")
+        cell.alignment = Alignment(vertical="center")
+
+    for work in works:
+        sheet.append(
+            [
+                work.rj,
+                work.local_title,
+                work.official_title,
+                work.circle,
+                work.voice_actors,
+                work.release_date,
+                work.tags,
+                work.sales_count,
+                work.rating_average,
+                work.rating_count,
+                work.cover_url,
+                work.work_url,
+                "\n".join(work.local_paths),
+                work.fetch_status,
+                work.failure_reason,
+                work.last_fetched_at,
+                work.metrics_failure_reason,
+                work.metrics_last_fetched_at,
+            ]
+        )
+
+    widths = [14, 36, 42, 24, 24, 14, 36, 14, 12, 12, 42, 42, 58, 12, 36, 24, 36, 24]
+    for index, width in enumerate(widths, start=1):
+        sheet.column_dimensions[get_column_letter(index)].width = width
+
+    for row in sheet.iter_rows():
+        for cell in row:
+            cell.alignment = Alignment(vertical="top", wrap_text=True)
+
+    sheet.freeze_panes = "A2"
+    sheet.auto_filter.ref = sheet.dimensions
+    workbook.save(path)
+    return path
