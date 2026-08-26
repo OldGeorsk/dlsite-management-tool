@@ -1,0 +1,3 @@
+# Preserve vendored Everything SDK files exactly as published upstream.
+vendor/everything-sdk/** -whitespace
+vendor/everything-sdk/dll/*.dll binary

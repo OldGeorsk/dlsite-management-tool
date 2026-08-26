@@ -73,6 +73,10 @@ def test_build_stats_counts_unique_works_and_missing_fields() -> None:
         "path": r"example-library\collection-a",
         "count": 2,
     }
+    assert stats["summary"]["insight_items"][0] == {
+        "code": "stats.insight.total",
+        "params": {"total": 3},
+    }
 
 
 def test_filters_combine_and_entity_matches_are_exact() -> None:
@@ -96,6 +100,7 @@ def test_empty_result_and_invalid_filters() -> None:
     assert stats["summary"]["total_works"] == 0
     assert stats["summary"]["coverage"]["tags"]["percentage"] == 0.0
     assert stats["summary"]["insights"] == ["当前筛选条件下没有作品，可以调整年份、状态或路径。"]
+    assert stats["summary"]["insight_items"] == [{"code": "stats.insight.empty", "params": {}}]
 
     for kwargs in ({"release_year": "20xx"}, {"status": "未知状态"}):
         try:

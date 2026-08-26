@@ -184,6 +184,15 @@ class Store:
         row = self.conn.execute("SELECT * FROM works WHERE rj = ?", (rj,)).fetchone()
         return self._row_to_work(row) if row else None
 
+    def add_path(self, rj: str, path: str) -> bool:
+        before = self.conn.total_changes
+        self.conn.execute(
+            "INSERT OR IGNORE INTO work_paths (rj, path) VALUES (?, ?)",
+            (rj, path),
+        )
+        self.conn.commit()
+        return self.conn.total_changes > before
+
     def _row_to_work(self, row: sqlite3.Row) -> Work:
         path_rows = self.conn.execute(
             "SELECT path FROM work_paths WHERE rj = ? ORDER BY path",

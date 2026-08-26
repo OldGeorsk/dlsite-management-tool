@@ -5,7 +5,7 @@ from pathlib import Path
 from openpyxl import load_workbook
 
 from dlsite_tool.exporter import export_xlsx
-from dlsite_tool.models import Work
+from dlsite_tool.models import STATUS_SUCCESS, Work
 
 
 def test_export_xlsx_preserves_multilingual_text(tmp_path: Path) -> None:
@@ -37,3 +37,13 @@ def test_export_xlsx_preserves_multilingual_text(tmp_path: Path) -> None:
     assert sheet["I2"].value == 4.25
     assert sheet["J2"].value == 17
     assert sheet["R1"].value == "指标最后刷新时间"
+
+
+def test_export_xlsx_localizes_english_headers_and_status(tmp_path: Path) -> None:
+    output = tmp_path / "works-en.xlsx"
+    export_xlsx([Work(rj="RJ00000001", fetch_status=STATUS_SUCCESS)], output, lang="en")
+    sheet = load_workbook(output).active
+    assert sheet.title == "DLsite Works"
+    assert sheet["A1"].value == "RJ ID"
+    assert sheet["N1"].value == "Fetch Status"
+    assert sheet["N2"].value == "Success"

@@ -9,7 +9,7 @@ from openpyxl.utils import get_column_letter
 from .models import Work
 
 
-HEADERS = [
+HEADERS_ZH = [
     "RJ号",
     "本地标题",
     "官网标题",
@@ -30,15 +30,26 @@ HEADERS = [
     "指标最后刷新时间",
 ]
 
+HEADERS_EN = [
+    "RJ ID", "Local Title", "Official Title", "Circle", "Voice Actors",
+    "Release Date", "Tags", "Sales Count", "Average Rating", "Rating Count",
+    "Cover URL", "Work URL", "Local Paths", "Fetch Status", "Failure Reason",
+    "Last Fetched At", "Metrics Failure Reason", "Metrics Last Refreshed At",
+]
 
-def export_xlsx(works: list[Work], output_path: str | Path) -> Path:
+HEADERS = HEADERS_ZH
+STATUS_EN = {"未抓取": "Not Fetched", "成功": "Success", "部分成功": "Partial Success", "失败": "Failed"}
+
+
+def export_xlsx(works: list[Work], output_path: str | Path, lang: str = "zh-CN") -> Path:
     path = Path(output_path)
     path.parent.mkdir(parents=True, exist_ok=True)
 
     workbook = Workbook()
     sheet = workbook.active
-    sheet.title = "DLsite作品"
-    sheet.append(HEADERS)
+    locale = "en" if lang == "en" else "zh-CN"
+    sheet.title = "DLsite Works" if locale == "en" else "DLsite作品"
+    sheet.append(HEADERS_EN if locale == "en" else HEADERS_ZH)
 
     for cell in sheet[1]:
         cell.font = Font(bold=True)
@@ -61,7 +72,7 @@ def export_xlsx(works: list[Work], output_path: str | Path) -> Path:
                 work.cover_url,
                 work.work_url,
                 "\n".join(work.local_paths),
-                work.fetch_status,
+                STATUS_EN.get(work.fetch_status, work.fetch_status) if locale == "en" else work.fetch_status,
                 work.failure_reason,
                 work.last_fetched_at,
                 work.metrics_failure_reason,

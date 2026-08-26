@@ -3,96 +3,130 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>DLsite 音声整理工具</title>
+  <title data-i18n="app.title">DLsite 音声整理工具</title>
   <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
   <main class="app">
     <header class="topbar">
       <div>
-        <h1>DLsite 音声整理工具</h1>
-        <p id="summary">本地缓存中暂无作品</p>
-        <nav class="page-nav" aria-label="页面导航">
-          <a class="active" href="/">作品列表</a>
-          <a href="/stats">资料库概览</a>
+        <h1 data-i18n="app.title">DLsite 音声整理工具</h1>
+        <p id="summary" data-i18n="app.emptySummary">本地缓存中暂无作品</p>
+        <nav class="page-nav" aria-label="页面导航" data-i18n-aria="nav.label">
+          <a class="active" href="/" data-i18n="nav.works">作品列表</a>
+          <a href="/stats" data-i18n="nav.stats">资料库概览</a>
         </nav>
       </div>
-      <a class="button secondary" href="/api/export">导出 Excel</a>
+      <div class="export-actions">
+        <div class="locale-switch" aria-label="Language"><button type="button" data-locale="zh-CN">中文</button><button type="button" data-locale="en">English</button></div>
+        <a id="exportCurrent" class="button secondary" href="/api/export" data-i18n="export.current">导出当前结果</a>
+        <a id="exportAll" class="button secondary" href="/api/export" data-i18n="export.all">导出全库</a>
+      </div>
     </header>
 
     <section class="panel controls">
-      <label class="path-field">
-        <span>音声库目录</span>
-        <input id="pathInput" placeholder="例如：请选择包含 RJ 作品目录的资料库根目录">
+      <label class="path-field path-picker">
+        <span data-i18n="field.library">音声库目录</span>
+        <input id="pathInput" autocomplete="off" aria-autocomplete="list" aria-controls="pathSuggestions" placeholder="输入至少 2 个字符，通过 Everything 定位资料库目录" data-i18n-placeholder="field.libraryPlaceholder">
+        <div id="pathSuggestions" class="path-suggestions" role="listbox" hidden></div>
+        <small id="pathHint" class="path-hint" data-i18n="field.pathHint">不会进行空查询，候选不会保存到历史记录。</small>
       </label>
       <label class="proxy-field">
-        <span>代理</span>
-        <input id="proxyInput" value="http://127.0.0.1:7892" placeholder="例如 http://127.0.0.1:7892">
+        <span data-i18n="field.proxy">代理</span>
+        <input id="proxyInput" value="http://127.0.0.1:7892" placeholder="例如 http://127.0.0.1:7892" data-i18n-placeholder="field.proxyPlaceholder">
       </label>
       <label class="check">
         <input id="fetchInput" type="checkbox">
-        <span>扫描后抓取官网信息</span>
+        <span data-i18n="action.fetchAfterScan">扫描后抓取官网信息</span>
       </label>
-      <button id="scanButton" class="button">扫描目录</button>
-      <button id="fetchButton" class="button secondary">补抓官网信息</button>
+      <button id="scanButton" class="button" data-i18n="action.scan">扫描目录</button>
+      <button id="fetchButton" class="button secondary" data-i18n="action.fetch">补抓官网信息</button>
       <label class="check">
         <input id="forceMetricsInput" type="checkbox">
-        <span>强制刷新已有指标</span>
+        <span data-i18n="action.forceMetrics">强制刷新已有指标</span>
       </label>
-      <button id="metricsButton" class="button secondary">刷新销量与评价</button>
+      <button id="metricsButton" class="button secondary" data-i18n="action.metrics">刷新销量与评价</button>
     </section>
 
     <section id="jobPanel" class="panel job-panel" hidden>
       <div class="job-header">
-        <strong id="jobTitle">任务准备中</strong>
+        <strong id="jobTitle" data-i18n="job.preparing">任务准备中</strong>
         <span id="jobPercent">0%</span>
       </div>
-      <div class="progress" aria-label="任务进度">
+      <div class="progress" aria-label="任务进度" data-i18n-aria="job.progressLabel">
         <div id="jobBar" class="progress-bar"></div>
       </div>
       <div class="job-details">
         <span id="jobCount">0 / 0</span>
         <span id="jobCurrent">当前 RJ：-</span>
-        <span id="jobMessage">等待任务开始</span>
+        <span id="jobMessage" data-i18n="job.waiting">等待任务开始</span>
       </div>
       <p id="jobError" class="job-error" hidden></p>
     </section>
 
-    <section class="panel filters">
-      <input id="searchInput" placeholder="搜索 RJ、标题、社团、声优、标签或路径">
-      <select id="statusFilter">
-        <option value="">全部状态</option>
-        <option value="未抓取">未抓取</option>
-        <option value="成功">成功</option>
-        <option value="部分成功">部分成功</option>
-        <option value="失败">失败</option>
-      </select>
+    <section class="panel search-workbench" aria-labelledby="searchHeading">
+      <div class="workbench-heading">
+        <div>
+          <h2 id="searchHeading" data-i18n="search.title">作品检索</h2>
+          <p data-i18n="search.help">同类选项任一匹配，不同分类与关键词同时满足。</p>
+        </div>
+        <button id="clearAll" class="text-button" type="button" data-i18n="search.clear">清除全部条件</button>
+      </div>
+
+      <div class="search-row">
+        <label class="search-field">
+          <span data-i18n="search.keyword">关键词</span>
+          <input id="searchInput" type="search" placeholder="多个关键词用空格分隔" data-i18n-placeholder="search.keywordPlaceholder">
+        </label>
+        <label class="status-field">
+          <span data-i18n="search.status">抓取状态</span>
+          <select id="statusFilter">
+            <option value="" data-i18n="search.allStatus">全部状态</option>
+            <option value="未抓取" data-i18n="status.未抓取">未抓取</option>
+            <option value="成功" data-i18n="status.成功">成功</option>
+            <option value="部分成功" data-i18n="status.部分成功">部分成功</option>
+            <option value="失败" data-i18n="status.失败">失败</option>
+          </select>
+        </label>
+        <label class="sort-field">
+          <span data-i18n="search.sort">排序</span>
+          <select id="sortFilter">
+            <option value="" data-i18n="search.newest">发售日：最新优先</option>
+            <option value="rating_average:desc" data-i18n="search.ratingHigh">平均评分：高到低</option>
+            <option value="rating_average:asc" data-i18n="search.ratingLow">平均评分：低到高</option>
+            <option value="rating_count:desc" data-i18n="search.ratingCountHigh">评价人数：多到少</option>
+            <option value="rating_count:asc" data-i18n="search.ratingCountLow">评价人数：少到多</option>
+          </select>
+        </label>
+      </div>
+
+      <div id="facetPanels" class="facet-grid"></div>
+
+      <details class="advanced-filters">
+        <summary data-i18n="search.advanced">高级筛选</summary>
+        <label>
+          <span data-i18n="search.pathContains">本地路径包含</span>
+          <input id="pathFilter" placeholder="输入完整路径或其中一部分" data-i18n-placeholder="search.pathPlaceholder">
+        </label>
+      </details>
     </section>
 
-    <section id="activeFilters" class="panel active-filters" hidden></section>
+    <section id="activeFilters" class="panel active-filters" hidden aria-live="polite"></section>
+
+    <p id="searchError" class="panel search-error" hidden></p>
 
     <section class="table-wrap">
       <table>
         <thead>
           <tr>
-            <th>RJ号</th>
-            <th>本地标题</th>
-            <th>官网标题</th>
-            <th>社团</th>
-            <th>声优</th>
-            <th>发售日</th>
-            <th>标签</th>
-            <th>总售出数</th>
-            <th>平均评分</th>
-            <th>评价人数</th>
-            <th>路径</th>
-            <th>状态</th>
+            <th data-i18n="table.rj">RJ号</th><th data-i18n="table.localTitle">本地标题</th><th data-i18n="table.officialTitle">官网标题</th><th data-i18n="table.circle">社团</th><th data-i18n="table.voiceActors">声优</th><th data-i18n="table.releaseDate">发售日</th><th data-i18n="table.tags">标签</th><th data-i18n="table.sales">总售出数</th><th data-i18n="table.average">平均评分</th><th data-i18n="table.ratingCount">评价人数</th><th data-i18n="table.paths">路径</th><th data-i18n="table.status">状态</th>
           </tr>
         </thead>
         <tbody id="worksBody"></tbody>
       </table>
     </section>
   </main>
+  <script src="/static/i18n.js"></script>
   <script src="/static/app.js"></script>
 </body>
 </html>

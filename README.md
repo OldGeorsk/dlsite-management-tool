@@ -1,39 +1,43 @@
 # DLsite Tool
 
-一个用于整理本地 DLsite 音声收藏的网页工具。它可以扫描包含 RJ 号的作品目录，从 DLsite 日文作品页补全元数据，并提供搜索、筛选、资料库统计和 Excel 导出。
+**English** | [简体中文](README.zh-CN.md)
 
-工具在本机运行，收藏记录和扫描结果保存在本地，不需要账号或云端服务。
+A local web application for organizing DLsite audio collections. It scans work folders containing RJ product IDs, retrieves metadata from Japanese DLsite product pages, and provides search, filtering, library statistics, and Excel export.
 
-## 主要功能
+The application runs locally. Your collection records and scan results remain on your computer, with no account or cloud service required.
 
-- 递归扫描本地目录，识别目录名中包含 `RJ` 加 6～9 位数字的作品目录。
-- 同一个 RJ 号出现在多个位置时，合并为一条作品记录并保留多个本地路径。
-- 从 DLsite 日文作品页补全官网标题、社团、声优、发售日、标签和封面 URL 等元数据。
-- 刷新总售出数、平均评分和评价人数；单个作品失败不会中断整个批量任务。
-- 在本地网页中搜索作品、组合筛选，并查看标签、声优、社团、年份等资料库统计。
-- 将作品信息和最新指标导出为 `.xlsx` 文件。
+## Features
 
-## 快速开始
+- Recursively scan local directories for work folders whose names contain `RJ` followed by 6–9 digits.
+- Use the local Everything index to suggest library roots, open work folders, and locate replacements for outdated paths by RJ ID.
+- Merge duplicate RJ IDs into one work record while retaining all known local paths.
+- Retrieve official titles, circles, voice actors, release dates, tags, cover URLs, and other metadata from Japanese DLsite pages.
+- Refresh sales counts, average ratings, and rating counts without allowing one failed work to stop the entire batch.
+- Search across the library with multiple keywords and combine filters for circles, voice actors, release years, and tags.
+- Sort by average rating or rating count and view live result counts for each filter option.
+- Export the current filtered results or the complete library, including the latest metrics, as an `.xlsx` workbook.
 
-### Windows 一键启动（推荐）
+## Quick Start
 
-准备条件：
+### Windows one-click launcher (recommended)
 
-- Windows 10 或 Windows 11。
-- Python 3.11 或更高版本。安装 Python 时请勾选 `Add python.exe to PATH`。
+Requirements:
 
-使用步骤：
+- Windows 10 or Windows 11
+- Python 3.11 or later. Select `Add python.exe to PATH` when installing Python.
 
-1. 下载项目并解压到本地文件夹。
-2. 双击项目根目录中的 `启动 DLsite 工具.bat`。
-3. 首次启动时，脚本会自动创建 `.venv` 虚拟环境并安装 `requirements.txt` 中的依赖。
-4. 服务启动成功后，浏览器会自动打开本地页面。
+To start the application:
 
-启动后的黑色窗口需要保持打开。关闭窗口或按 `Ctrl+C` 会停止本地服务。
+1. Download or clone this repository to a local folder.
+2. Double-click `启动 DLsite 工具.bat` in the repository root.
+3. On the first launch, the script creates a `.venv` virtual environment and installs the packages listed in `requirements.txt`.
+4. Once the server is ready, the application opens automatically in your browser.
 
-### 开发者启动
+Keep the terminal window open while using the application. Closing it or pressing `Ctrl+C` stops the local server.
 
-在项目根目录执行：
+### Developer setup
+
+Run the following commands from the repository root:
 
 ```powershell
 python -m venv .venv
@@ -41,74 +45,115 @@ python -m venv .venv
 .\.venv\Scripts\python.exe server.py
 ```
 
-然后打开：
+Then open:
 
 ```text
 http://127.0.0.1:8765
 ```
 
-直接运行 `server.py` 时默认使用 8765 端口；Windows 一键启动器会从该端口开始自动寻找可用端口。
+Running `server.py` directly uses port 8765 by default. The Windows launcher starts at that port and automatically selects another available port when necessary.
 
-## 基本使用
+## Usage
 
-1. 在网页中输入音声资料库的根目录路径。
-2. 点击“扫描目录”，让工具识别其中的 RJ 作品目录。
-3. 如需补全 DLsite 元数据，勾选“扫描后抓取官网信息”，或在扫描后单独抓取缺失信息。
-4. 在作品表格中搜索和筛选结果，或进入“资料库概览”查看统计。
-5. 点击“导出 Excel”，将当前资料库保存为 `.xlsx` 文件。
+The interface supports English and Simplified Chinese without any additional setup. On the first visit it follows the browser language (Chinese browsers use Chinese; all others use English). Use the **中文 / English** switch in the page header to change languages; the choice is remembered locally for both pages. Excel sheet names, headers, and status labels follow the active interface language.
 
-### 代理设置
+1. Enter the root directory of your audio library in the web interface.
+2. Select **扫描目录** (Scan Directory) to find RJ work folders.
+3. To retrieve DLsite metadata, enable **扫描后抓取官网信息** (Fetch Official Information After Scanning), or run the metadata fetch separately after scanning.
+4. Enter keywords under **作品检索** (Work Search), or combine the circle, voice actor, release year, and tag filters. Multiple values within one category use OR logic; different categories use AND logic.
+5. Sort by average rating or rating count, or open **资料库概览** (Library Overview) to view statistics.
+6. Select **导出当前结果** (Export Current Results) to preserve the current filters and order, or **导出全库** (Export Full Library) to export every work.
 
-代理栏当前预填 `http://127.0.0.1:7892`。只有本机正在运行对应代理服务时才能使用该地址；否则请清空代理栏以尝试直连，或改成你自己的 HTTP 代理地址。
+### Recommended folder structure
 
-## 进阶操作
+Store each work in a separate folder. The recommended naming convention is `RJ ID + space + local title`:
 
-- 点击“刷新销量与评价”，补齐尚未抓取的总售出数、平均评分和评价人数。
-- 勾选“强制刷新已有指标”后再次刷新，可以更新全库已有指标。该任务串行执行，作品较多时需要等待较长时间。
-- 扫描、元数据抓取和指标刷新会在页面显示任务进度；同一时间只会运行一个后台任务。
-- “资料库概览”支持按年份、抓取状态和本地路径组合筛选，并可从排行项目返回作品列表下钻查看。
-- 指标未知时显示 `—`；将鼠标停留在对应位置可以查看刷新时间或失败原因。
+```text
+Audio Library/
+├─ RJ00000001 Work Title/
+│  ├─ Audio/
+│  └─ Illustrations/
+└─ RJ00000002 Another Work/
+```
 
-## 数据安全与使用边界
+Detection is intentionally flexible. A folder is recognized when its name contains `RJ` followed by 6–9 digits, case-insensitively. All of the following names are valid:
 
-- 工具默认只读扫描，不会重命名、移动、删除或修改任何音声文件。
-- SQLite 数据库、运行日志和导出的 Excel 文件均保存在项目本地目录中。
-- 扫描与统计完全在本地完成；只有抓取元数据或刷新指标时，程序才会向 DLsite 发起网络请求。
-- 单个 RJ 抓取失败会记录可读的失败原因，不会中断后续作品的处理。
-- 动态指标只保存最近一次成功取得的值，不保存历史快照或变化趋势；刷新失败不会清空上次成功值。
-- 本项目与 DLsite 官方无关联。DLsite 页面、接口或访问规则发生变化时，抓取功能可能暂时失效。
-- 请根据所在地法律、DLsite 的使用规则和自身网络环境合理使用抓取功能，避免频繁请求。
+```text
+RJ00000001 Work Title
+Work Title [RJ00000001]
+rj00000001_Work_Title
+```
 
-## 常见问题
+Text other than the RJ ID is used as the local title.
 
-### 双击启动文件后没有正常启动
+The scanner searches recursively. Once a directory is recognized as a work root, nested folders such as `Audio`, `Bonus`, or `Images` are not treated as separate works. Put the RJ ID in the outermost folder for each work, and avoid placing RJ IDs in category folders. If the same RJ ID exists in multiple locations, the application merges it into one work record and retains every path.
 
-确认已经安装 Python 3.11 或更高版本，并且安装时已将 Python 加入 `PATH`。也可以在项目目录打开 PowerShell，运行 `.\start-dlsite-tool.ps1` 查看错误信息。
+After at least two characters are entered in the path field, Everything can suggest up to 20 directories. Selecting a suggestion only fills the field; you must still select **扫描目录**. Saved paths in the work list can be opened directly. When an old path no longer exists, the application can suggest alternatives by RJ ID, search using additional title keywords, or accept a manually entered path. A new path is saved only after you explicitly select **添加路径** (Add Path) and the directory name contains the same RJ ID. Existing paths are never removed automatically.
 
-### 浏览器没有自动打开
+### Proxy configuration
 
-保持启动窗口开启，将窗口中显示的 `http://127.0.0.1:端口` 复制到浏览器地址栏打开。
+The proxy field is currently prefilled with `http://127.0.0.1:7892`. Use it only if a matching local proxy service is running. Otherwise, clear the field to try a direct connection or replace it with your own HTTP proxy address.
 
-### 无法抓取 DLsite 信息
+## Advanced Operations
 
-先检查网络连接和代理设置。如果本机没有运行 `127.0.0.1:7892` 对应的代理，请清空代理栏尝试直连，或填写实际可用的代理地址。失败原因会显示在任务进度或作品记录中。
+- Select **刷新销量与评价** (Refresh Sales and Ratings) to fill missing sales counts, average ratings, and rating counts.
+- Enable **强制刷新已有指标** (Force Refresh Existing Metrics) before refreshing to update metrics that are already present. This task runs sequentially and can take time for a large library.
+- Scanning, metadata retrieval, and metric refresh operations display progress in the interface. Only one background job runs at a time.
+- **资料库概览** supports combined filters for year, fetch status, and local path, with drill-down links from rankings to the work list.
+- Separate search terms with spaces. Every term must match, although terms may appear across different fields such as titles, RJ IDs, circles, voice actors, tags, or paths.
+- Counts displayed in the four filter panels show how many works match under the other active conditions. Selected filters appear as removable chips, and the page URL preserves the complete search state.
+- Sorting by average rating or rating count places unknown values last. Without a metric sort, works are ordered by release date, newest first.
+- Unknown metrics are displayed as `—`. Hover over the value to see the last refresh time or failure reason.
 
-### 数据保存在哪里
+## Data Safety and Privacy
 
-- SQLite 数据库：`data/dlsite_tool.sqlite3`
-- Excel 导出：`exports/dlsite_works.xlsx`
-- 运行日志：`logs/`
+- Directory scanning is read-only. The application does not rename, move, delete, or modify audio files.
+- Everything queries use only the existing local index. The application does not enable Everything's HTTP Server or upload disk contents. Query text, candidate paths, and access tokens are not written to URLs, SQLite, browser storage, or log files; candidates exist only in the current page and short-lived server memory.
+- The SQLite database, runtime logs, and exported Excel files are stored locally within the project directory.
+- Scanning and statistics are computed entirely on your computer. Network requests are sent only when retrieving metadata or refreshing metrics from DLsite.
+- A failed RJ fetch records a readable error and does not stop later works from being processed.
+- Only the latest successfully retrieved dynamic metrics are stored. Historical snapshots and trends are not retained, and a failed refresh does not erase the last successful values.
+- This project is not affiliated with DLsite. Changes to DLsite pages, endpoints, or access rules may temporarily break metadata retrieval.
+- Use the retrieval features responsibly and in accordance with applicable laws, DLsite's terms, and your network environment. Avoid excessive requests.
 
-这些目录保存的是本地资料库信息，不应随意上传或分享。
+## Everything Integration
 
-## 技术栈
+- Requires Windows and a running standard edition of Everything with IPC support. Everything Lite does not support the required SDK/IPC interface.
+- The application selects the x86, x64, ARM, or ARM64 DLL from `vendor/everything-sdk/dll/` according to the Python runtime architecture.
+- The official SDK connects only to the default unnamed Everything instance. Named instances are not supported. If Everything 1.4 and 1.5 are installed side by side, make sure the instance you want to query is the default unnamed instance.
+- If Everything is unavailable, its index is not ready, the SDK is incompatible, or a query is busy or times out, the interface displays a readable message and keeps manual path entry available. The application does not start Everything automatically or fall back to a full-disk traversal.
+- SDK queries run in a dedicated local worker process. A query that exceeds one second terminates and recreates the worker so it cannot block the web server. The warm-query target is a P95 latency below 400 ms from the last keystroke to suggestion display.
+
+## Troubleshooting
+
+### The launcher does not start correctly
+
+Confirm that Python 3.11 or later is installed and available on `PATH`. You can also open PowerShell in the repository directory and run `.\start-dlsite-tool.ps1` to view the error details.
+
+### The browser does not open automatically
+
+Keep the terminal window open and copy the displayed `http://127.0.0.1:port` address into your browser.
+
+### DLsite information cannot be retrieved
+
+Check your network connection and proxy settings. If no proxy service is listening at `127.0.0.1:7892`, clear the proxy field to try a direct connection or enter a working HTTP proxy. Failure details appear in the task progress or work record.
+
+### Where is my data stored?
+
+- SQLite database: `data/dlsite_tool.sqlite3`
+- Excel export: `exports/dlsite_works.xlsx`
+- Runtime logs: `logs/`
+
+These directories contain information about your local library and should not be uploaded or shared without review.
+
+## Technology Stack
 
 - Python 3.11+
-- Python 标准库 `ThreadingHTTPServer`、`urllib` 和 `threading`
+- Python standard library: `ThreadingHTTPServer`, `urllib`, and `threading`
 - SQLite
 - `openpyxl`
-- 原生 HTML、CSS、JavaScript 和 SVG
+- Vanilla HTML, CSS, JavaScript, and SVG
 
-## 项目状态
+## Project Status
 
-这是一个以个人使用为主的本地工具，目前已覆盖目录扫描、元数据抓取、指标刷新、作品筛选、资料库统计和 Excel 导出。项目仍可能根据实际整理需求继续调整。
+This project is primarily designed for personal, local use. It currently supports directory scanning, metadata retrieval, metric refreshes, work filtering, library statistics, and Excel export, and may continue to evolve around practical collection-management needs.

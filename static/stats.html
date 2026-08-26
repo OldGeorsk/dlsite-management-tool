@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>资料库概览 · DLsite 音声整理工具</title>
+  <title data-i18n="stats.title">资料库概览 · DLsite 音声整理工具</title>
   <link rel="stylesheet" href="/static/styles.css">
   <link rel="stylesheet" href="/static/stats.css">
 </head>
@@ -12,67 +12,69 @@
     <header class="topbar">
       <div>
         <p class="eyebrow">LIBRARY OVERVIEW</p>
-        <h1>资料库概览</h1>
-        <p id="statsSummary">正在读取本地资料库…</p>
-        <nav class="page-nav" aria-label="页面导航">
-          <a href="/">作品列表</a>
-          <a class="active" href="/stats">资料库概览</a>
+        <h1 data-i18n="stats.heading">资料库概览</h1>
+        <p id="statsSummary" data-i18n="stats.loading">正在读取本地资料库…</p>
+        <nav class="page-nav" aria-label="页面导航" data-i18n-aria="nav.label">
+          <a href="/" data-i18n="nav.works">作品列表</a>
+          <a class="active" href="/stats" data-i18n="nav.stats">资料库概览</a>
         </nav>
       </div>
+      <div class="locale-switch" aria-label="Language"><button type="button" data-locale="zh-CN">中文</button><button type="button" data-locale="en">English</button></div>
     </header>
 
     <form id="statsFilters" class="panel stats-filters">
       <label>
-        <span>发售年份</span>
-        <select id="yearFilter"><option value="">全部年份</option></select>
+        <span data-i18n="stats.releaseYear">发售年份</span>
+        <select id="yearFilter"><option value="" data-i18n="stats.allYears">全部年份</option></select>
       </label>
       <label>
-        <span>抓取状态</span>
-        <select id="statsStatusFilter"><option value="">全部状态</option></select>
+        <span data-i18n="search.status">抓取状态</span>
+        <select id="statsStatusFilter"><option value="" data-i18n="search.allStatus">全部状态</option></select>
       </label>
       <label class="stats-path-field">
-        <span>本地路径</span>
-        <input id="pathFilter" list="pathSuggestions" placeholder="输入月份或目录片段">
+        <span data-i18n="stats.localPath">本地路径</span>
+        <input id="pathFilter" list="pathSuggestions" placeholder="输入月份或目录片段" data-i18n-placeholder="stats.pathPlaceholder">
         <datalist id="pathSuggestions"></datalist>
       </label>
-      <button class="button" type="submit">应用筛选</button>
-      <a class="button secondary" href="/stats">清除</a>
+      <button class="button" type="submit" data-i18n="stats.apply">应用筛选</button>
+      <a class="button secondary" href="/stats" data-i18n="stats.clear">清除</a>
     </form>
 
     <div id="statsError" class="panel error-panel" hidden role="alert"></div>
     <div id="statsContent" hidden>
-      <section id="summaryCards" class="summary-grid" aria-label="资料库摘要"></section>
+      <section id="summaryCards" class="summary-grid" aria-label="资料库摘要" data-i18n-aria="stats.summaryLabel"></section>
 
       <section class="panel insight-panel">
         <div>
-          <p class="section-kicker">一眼概括</p>
-          <h2>你的收藏呈现出这些特征</h2>
+          <p class="section-kicker" data-i18n="stats.glance">一眼概括</p>
+          <h2 data-i18n="stats.insightHeading">你的收藏呈现出这些特征</h2>
         </div>
         <ul id="insights"></ul>
       </section>
 
-      <section class="ranking-grid" aria-label="收藏偏好排行">
+      <section class="ranking-grid" aria-label="收藏偏好排行" data-i18n-aria="stats.rankingLabel">
         <article class="panel ranking-card" data-ranking="tags"></article>
         <article class="panel ranking-card" data-ranking="voice_actors"></article>
         <article class="panel ranking-card" data-ranking="circles"></article>
       </section>
 
-      <p class="percentage-note">占比以当前筛选后的全部唯一 RJ 为分母；一部作品可包含多个标签或声优，因此占比之和可能超过 100%。</p>
+      <p class="percentage-note" data-i18n="stats.note">占比以当前筛选后的全部唯一 RJ 为分母；一部作品可包含多个标签或声优，因此占比之和可能超过 100%。</p>
 
       <section class="distribution-grid">
         <article class="panel distribution-card">
           <p class="section-kicker">RELEASE YEAR</p>
-          <h2>发售年份分布</h2>
+          <h2 data-i18n="stats.releaseDistribution">发售年份分布</h2>
           <div id="yearChart" class="year-chart"></div>
         </article>
         <article class="panel distribution-card">
           <p class="section-kicker">DATA HEALTH</p>
-          <h2>抓取状态</h2>
+          <h2 data-i18n="stats.fetchStatus">抓取状态</h2>
           <div id="statusChart"></div>
         </article>
       </section>
     </div>
   </main>
+  <script src="/static/i18n.js"></script>
   <script src="/static/stats.js"></script>
 </body>
 </html>

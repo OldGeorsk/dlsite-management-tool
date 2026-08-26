@@ -36,9 +36,31 @@ def test_job_manager_reports_success_progress() -> None:
     assert finished is not None
     assert finished.status == JOB_SUCCESS
     assert finished.stage == "完成"
+    assert finished.stage_code == "job.stage.done"
+    assert finished.message_code == "job.message.completed"
+    assert finished.message_params == {}
     assert finished.total == 2
     assert finished.completed == 1
     assert finished.finished_at
+
+
+def test_job_manager_preserves_structured_localization_fields() -> None:
+    manager = JobManager()
+    job = manager.start(
+        "fetch",
+        lambda reporter: reporter.update(
+            stage="抓取官网信息",
+            stage_code="job.stage.fetch",
+            message="正在抓取 RJ00000001",
+            message_code="job.message.fetching",
+            message_params={"rj": "RJ00000001"},
+        ),
+    )
+    wait_for_job(manager, job.id, JOB_SUCCESS)
+    payload = manager.get(job.id).to_dict()
+    assert payload["stage_code"] == "job.stage.done"
+    assert payload["message_code"] == "job.message.completed"
+    assert payload["message_params"] == {}
 
 
 def test_job_manager_rejects_second_running_job() -> None:
