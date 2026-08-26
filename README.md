@@ -58,11 +58,11 @@ Running `server.py` directly uses port 8765 by default. The Windows launcher sta
 The interface supports English and Simplified Chinese without any additional setup. On the first visit it follows the browser language (Chinese browsers use Chinese; all others use English). Use the **中文 / English** switch in the page header to change languages; the choice is remembered locally for both pages. Excel sheet names, headers, and status labels follow the active interface language.
 
 1. Enter the root directory of your audio library in the web interface.
-2. Select **扫描目录** (Scan Directory) to find RJ work folders.
-3. To retrieve DLsite metadata, enable **扫描后抓取官网信息** (Fetch Official Information After Scanning), or run the metadata fetch separately after scanning.
-4. Enter keywords under **作品检索** (Work Search), or combine the circle, voice actor, release year, and tag filters. Multiple values within one category use OR logic; different categories use AND logic.
-5. Sort by average rating or rating count, or open **资料库概览** (Library Overview) to view statistics.
-6. Select **导出当前结果** (Export Current Results) to preserve the current filters and order, or **导出全库** (Export Full Library) to export every work.
+2. Select **Scan Directory** to find RJ work folders.
+3. To retrieve DLsite metadata, enable **Fetch Official Information After Scanning**, or run the metadata fetch separately after scanning.
+4. Enter keywords under **Work Search**, or combine the circle, voice actor, release year, and tag filters. Multiple values within one category use OR logic; different categories use AND logic.
+5. Sort by average rating or rating count, or open **Library Overview** to view statistics.
+6. Select **Export Current Results** to preserve the current filters and order, or **Export Full Library** to export every work.
 
 ### Recommended folder structure
 
@@ -88,7 +88,7 @@ Text other than the RJ ID is used as the local title.
 
 The scanner searches recursively. Once a directory is recognized as a work root, nested folders such as `Audio`, `Bonus`, or `Images` are not treated as separate works. Put the RJ ID in the outermost folder for each work, and avoid placing RJ IDs in category folders. If the same RJ ID exists in multiple locations, the application merges it into one work record and retains every path.
 
-After at least two characters are entered in the path field, Everything can suggest up to 20 directories. Selecting a suggestion only fills the field; you must still select **扫描目录**. Saved paths in the work list can be opened directly. When an old path no longer exists, the application can suggest alternatives by RJ ID, search using additional title keywords, or accept a manually entered path. A new path is saved only after you explicitly select **添加路径** (Add Path) and the directory name contains the same RJ ID. Existing paths are never removed automatically.
+After at least two characters are entered in the path field, Everything can suggest up to 20 directories. Selecting a suggestion only fills the field; you must still select **Scan Directory**. Saved paths in the work list can be opened directly. When an old path no longer exists, the application can suggest alternatives by RJ ID, search using additional title keywords, or accept a manually entered path. A new path is saved only after you explicitly select **Add Path** and the directory name contains the same RJ ID. Existing paths are never removed automatically.
 
 ### Proxy configuration
 
@@ -96,10 +96,10 @@ The proxy field is currently prefilled with `http://127.0.0.1:7892`. Use it only
 
 ## Advanced Operations
 
-- Select **刷新销量与评价** (Refresh Sales and Ratings) to fill missing sales counts, average ratings, and rating counts.
-- Enable **强制刷新已有指标** (Force Refresh Existing Metrics) before refreshing to update metrics that are already present. This task runs sequentially and can take time for a large library.
+- Select **Refresh Sales and Ratings** to fill missing sales counts, average ratings, and rating counts.
+- Enable **Force Refresh Existing Metrics** before refreshing to update metrics that are already present. This task runs sequentially and can take time for a large library.
 - Scanning, metadata retrieval, and metric refresh operations display progress in the interface. Only one background job runs at a time.
-- **资料库概览** supports combined filters for year, fetch status, and local path, with drill-down links from rankings to the work list.
+- **Library Overview** supports combined filters for year, fetch status, and local path, with drill-down links from rankings to the work list.
 - Separate search terms with spaces. Every term must match, although terms may appear across different fields such as titles, RJ IDs, circles, voice actors, tags, or paths.
 - Counts displayed in the four filter panels show how many works match under the other active conditions. Selected filters appear as removable chips, and the page URL preserves the complete search state.
 - Sorting by average rating or rating count places unknown values last. Without a metric sort, works are ordered by release date, newest first.
