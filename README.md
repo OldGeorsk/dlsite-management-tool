@@ -53,6 +53,10 @@ http://127.0.0.1:8765
 
 Running `server.py` directly uses port 8765 by default. The Windows launcher starts at that port and automatically selects another available port when necessary.
 
+### Project structure and maintenance
+
+See the [project structure guide](docs/PROJECT-STRUCTURE.md) for directory responsibilities, startup entry points, test commands, maintenance scripts, and local data locations.
+
 ## Usage
 
 The interface supports English and Simplified Chinese without any additional setup. On the first visit it follows the browser language (Chinese browsers use Chinese; all others use English). Use the **中文 / English** switch in the page header to change languages; the choice is remembered locally for both pages. Excel sheet names, headers, and status labels follow the active interface language.

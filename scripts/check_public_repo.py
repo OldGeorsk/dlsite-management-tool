@@ -17,6 +17,7 @@ FORBIDDEN_PREFIXES = (
     ".venv/",
     "data/",
     "docs/dev/",
+    "docs/DEVLOG/dev/",
     "exports/",
     "logs/",
     "reports/",

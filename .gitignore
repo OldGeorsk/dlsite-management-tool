@@ -25,4 +25,5 @@ reports/
 # Internal planning and development records
 AGENTS.md
 docs/dev/
+docs/DEVLOG/dev/
 docs/dev-log-template.md
