@@ -57,6 +57,26 @@
     "stats.insight.empty": "No works match the current filters. Adjust the year, status, or path.", "stats.insight.total": "The current view contains {total} unique RJ works.", "stats.insight.top": "The most frequent {dimension} is “{name}”, covering {count} works.", "stats.insight.year": "Works are most concentrated in {year}, with {count} releases.", "stats.insight.coverage": "{dimension} has the lowest coverage at {percentage}%, with {missing} works missing data.", "dimension.tags": "tag", "dimension.voice_actors": "voice actor", "dimension.circles": "circle", "dimension.release_year": "release year",
     "job.stage.preparing": "Preparing", "job.stage.scan": "Scanning Directory", "job.stage.write": "Writing Cache", "job.stage.fetch": "Fetching Official Information", "job.stage.done": "Done", "job.message.created": "Task created", "job.message.completed": "Task completed", "job.message.failed": "Task failed", "job.message.scanning": "Scanning directory", "job.message.scan_found": "Found {count} works; writing cache", "job.message.scan_complete": "Scan identified {count} works", "job.message.fetch_preparing": "Preparing to fetch {total} works", "job.message.fetch_none": "No works need metadata", "job.message.fetching": "Fetching {rj}", "job.message.progress": "Completed {completed}/{total}", "job.message.metrics_preparing": "Preparing to refresh sales and ratings for {total} works", "job.message.metrics_none": "No sales or rating metrics are missing", "job.message.metrics_refreshing": "Refreshing sales and ratings for {rj}",
   };
+  Object.assign(zh, {
+    "stats.brand": "DLsite 音声库", "stats.subtitle": "当前收藏的规模、分布与资料完整度。", "stats.unit": "统计单位：唯一 RJ 作品", "stats.retry": "重新加载",
+    "stats.workUnit": "部", "stats.entryUnit": "项", "stats.entries.circles": "社团条目", "stats.entries.voice_actors": "声优条目", "stats.entries.tags": "标签条目",
+    "stats.releaseHint": "作品发行分布", "stats.yearAction": "点击柱形，筛选该年份", "stats.yearsKnown": "年份已知 {known} 部 · 缺失 {missing} 部",
+    "stats.statusHint": "每部作品只属于一种状态", "stats.statusLink": "查看{status}的 {count} 部作品，占 {percentage}%", "stats.statusFoot": "成功 {percentage}% · 其余 {count} 部为部分成功、失败或未抓取；点击图例查看作品。", "stats.emptyStatus": "暂无作品，环图保留为空；没有可计算的状态占比。",
+    "stats.completeness": "资料完整度", "stats.coverageHint": "按字段独立计算", "stats.known": "已知 {count}", "stats.missing": "缺失 {count}", "stats.coverageValue": "覆盖率 {percentage}%",
+    "stats.emptyCoverage": "暂无作品，覆盖率显示 0%；已知与缺失均为 0。", "stats.fullCoverage": "四项字段均已覆盖当前作品。", "stats.lowCoverage": "{dimension}覆盖率最低：{percentage}%，{missing} 部尚无该字段；字段缺失不代表抓取失败。",
+    "stats.rankCount": "{count} 项 · 按作品数", "stats.searchEmpty": "没有匹配项，请换个关键词。",
+    "stats.emptyLibrary": "资料库还是空的", "stats.emptyLibraryHelp": "前往作品列表，扫描本地音声目录后即可查看收藏概览。", "stats.noMatch": "没有符合条件的作品", "stats.noMatchHelp": "试试清除筛选，或换一个年份、状态和路径片段。",
+  });
+  Object.assign(en, {
+    "stats.brand": "DLsite Audio Library", "stats.subtitle": "Your collection's size, distribution, and metadata coverage.", "stats.unit": "Counted by unique RJ work", "stats.retry": "Reload",
+    "stats.workUnit": "works", "stats.entryUnit": "entries", "stats.entries.circles": "Distinct Circles", "stats.entries.voice_actors": "Distinct Voice Actors", "stats.entries.tags": "Distinct Tags",
+    "stats.releaseHint": "Release distribution", "stats.yearAction": "Select a bar to filter by year", "stats.yearsKnown": "Year known: {known} · Missing: {missing}",
+    "stats.statusHint": "One status per work", "stats.statusLink": "View {count} works with status {status}, {percentage}%", "stats.statusFoot": "Success: {percentage}% · {count} other works are partial, failed, or unfetched. Select a status to view works.", "stats.emptyStatus": "No works; the ring is empty and no status share can be calculated.",
+    "stats.completeness": "Metadata Coverage", "stats.coverageHint": "Each field counted separately", "stats.known": "Known: {count}", "stats.missing": "Missing: {count}", "stats.coverageValue": "Coverage: {percentage}%",
+    "stats.emptyCoverage": "No works; coverage is 0%, with 0 known and 0 missing.", "stats.fullCoverage": "All four fields cover every work in this view.", "stats.lowCoverage": "Lowest coverage: {dimension}, {percentage}% ({missing} missing). Missing fields do not imply fetch failure.",
+    "stats.rankCount": "{count} entries · By works", "stats.searchEmpty": "No matching entries. Try another search.",
+    "stats.emptyLibrary": "Your library is empty", "stats.emptyLibraryHelp": "Go to the work list and scan a local audio folder to see your collection here.", "stats.noMatch": "No works match these filters", "stats.noMatchHelp": "Clear the filters, or try another year, status, or path fragment.",
+  });
   const messages = { "zh-CN": zh, en };
   function detect(storage = window.localStorage, language = navigator.language) {
     let saved = "";
