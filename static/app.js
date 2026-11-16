@@ -141,41 +141,47 @@ function renderWorkbench() {
 }
 
 function renderFacets() {
-  const open = new Set([...el.facets.querySelectorAll("details[open]")].map((item) => item.dataset.facet));
-  el.facets.innerHTML = Object.entries(facetMeta).map(([key, meta]) => {
+  Object.entries(facetMeta).forEach(([key, meta]) => {
     const title = t(meta.titleKey);
     const items = state.facets[key] || [];
-    const visible = items.filter((item) => {
-      const term = (state.facetSearch[key] || "").toLocaleLowerCase();
-      return !term || item.name.toLocaleLowerCase().includes(term);
-    });
     const selectedCount = (state.query[key] || []).length;
-    return `
-      <details class="facet-panel" data-facet="${key}"${open.has(key) || selectedCount ? " open" : ""}>
-        <summary>${title}<span>${selectedCount ? t("facet.selected", { count: selectedCount }) : t("facet.items", { count: items.length })}</span></summary>
+    let panel = el.facets.querySelector(`[data-facet="${key}"]`);
+    if (!panel) {
+      panel = document.createElement("details");
+      panel.className = "facet-panel";
+      panel.dataset.facet = key;
+      panel.innerHTML = `<summary></summary>
         <div class="facet-content">
-          <input class="facet-search" data-facet-search="${key}" value="${escapeAttr(state.facetSearch[key] || "")}" placeholder="${escapeAttr(t("facet.search", { title }))}">
-          <div class="facet-options">
-            ${visible.length ? visible.map((item) => `
-              <label class="facet-option">
-                <input type="checkbox" data-facet-value="${key}" value="${escapeAttr(item.name)}"${item.selected ? " checked" : ""}>
-                <span title="${escapeAttr(item.name)}">${escapeHtml(item.name)}</span>
-                <strong>${item.count}</strong>
-              </label>`).join("") : `<p class="facet-empty">${t("facet.empty")}</p>`}
-          </div>
-        </div>
-      </details>`;
-  }).join("");
-  el.facets.querySelectorAll("[data-facet-search]").forEach((input) => {
-    input.addEventListener("input", () => {
-      state.facetSearch[input.dataset.facetSearch] = input.value;
-      renderFacets();
-      const next = el.facets.querySelector(`[data-facet-search="${input.dataset.facetSearch}"]`);
-      next.focus();
-      next.setSelectionRange(input.value.length, input.value.length);
-    });
+          <input class="facet-search" data-facet-search="${key}">
+          <div class="facet-options"></div>
+        </div>`;
+      el.facets.append(panel);
+      const input = panel.querySelector("[data-facet-search]");
+      bindTextInput(input, () => {
+        state.facetSearch[key] = input.value;
+        renderFacetOptions(key, panel);
+      });
+    }
+    // Keep the focused input attached: replacing it cancels native IME composition.
+    panel.open = panel.open || selectedCount > 0;
+    panel.querySelector("summary").innerHTML = `${title}<span>${selectedCount ? t("facet.selected", { count: selectedCount }) : t("facet.items", { count: items.length })}</span>`;
+    const input = panel.querySelector("[data-facet-search]");
+    input.placeholder = t("facet.search", { title });
+    if (document.activeElement !== input) input.value = state.facetSearch[key] || "";
+    renderFacetOptions(key, panel);
   });
-  el.facets.querySelectorAll("[data-facet-value]").forEach((input) => {
+}
+
+function renderFacetOptions(key, panel) {
+  const term = (state.facetSearch[key] || "").toLocaleLowerCase();
+  const visible = (state.facets[key] || []).filter((item) => !term || item.name.toLocaleLowerCase().includes(term));
+  panel.querySelector(".facet-options").innerHTML = visible.length ? visible.map((item) => `
+    <label class="facet-option">
+      <input type="checkbox" data-facet-value="${key}" value="${escapeAttr(item.name)}"${item.selected ? " checked" : ""}>
+      <span title="${escapeAttr(item.name)}">${escapeHtml(item.name)}</span>
+      <strong>${item.count}</strong>
+    </label>`).join("") : `<p class="facet-empty">${t("facet.empty")}</p>`;
+  panel.querySelectorAll("[data-facet-value]").forEach((input) => {
     input.addEventListener("change", () => {
       const next = structuredClone(state.query);
       const values = new Set(next[input.dataset.facetValue] || []);
@@ -470,7 +476,19 @@ function setSearchLoading(loading) { document.body.classList.toggle("search-load
 function showSearchError(message, detail = "") { el.searchError.hidden = !message; el.searchError.innerHTML = message ? `${escapeHtml(message)}${detail ? `<details><summary>${t("error.details")}</summary><pre>${escapeHtml(detail)}</pre></details>` : ""}` : ""; }
 function statusLabel(status) { return t(`status.${status}`); }
 function apiError(data, fallbackKey) { const key = data?.error_code || fallbackKey; const error = new Error(t(key, data?.error_params || {}) === key ? t(fallbackKey) : t(key, data?.error_params || {})); error.code = key; error.detail = data?.error_detail || ((data?.error && key === "error.unexpected") ? data.error : ""); return error; }
-function debounce(callback, delay = 250) { let timer; return (...args) => { clearTimeout(timer); timer = setTimeout(() => callback(...args), delay); }; }
+function debounce(callback, delay = 250) {
+  let timer;
+  const update = (...args) => { clearTimeout(timer); timer = setTimeout(() => callback(...args), delay); };
+  update.cancel = () => clearTimeout(timer);
+  return update;
+}
+
+function bindTextInput(input, callback) {
+  let composing = false;
+  input.addEventListener("compositionstart", () => { composing = true; callback.cancel?.(); });
+  input.addEventListener("compositionend", () => { composing = false; callback(); });
+  input.addEventListener("input", (event) => { if (!composing && !event.isComposing) callback(); });
+}
 
 const updateTextQuery = debounce(() => {
   const next = structuredClone(state.query);
@@ -479,8 +497,9 @@ const updateTextQuery = debounce(() => {
 });
 
 el.scan.addEventListener("click", scan);
-el.path.addEventListener("input", updatePathSuggestions);
+bindTextInput(el.path, updatePathSuggestions);
 el.path.addEventListener("keydown", (event) => {
+  if (event.isComposing || event.keyCode === 229) return;
   if (event.key === "Escape") el.pathSuggestions.hidden = true;
   if (event.key === "ArrowDown" && !el.pathSuggestions.hidden) { event.preventDefault(); el.pathSuggestions.querySelector("button")?.focus(); }
 });
@@ -494,8 +513,8 @@ el.pathSuggestions.addEventListener("keydown", (event) => {
 });
 el.fetchButton.addEventListener("click", fetchMissing);
 el.metricsButton.addEventListener("click", refreshMetrics);
-el.search.addEventListener("input", updateTextQuery);
-el.pathFilter.addEventListener("input", updateTextQuery);
+bindTextInput(el.search, updateTextQuery);
+bindTextInput(el.pathFilter, updateTextQuery);
 el.status.addEventListener("change", () => { const next = structuredClone(state.query); next.status = el.status.value; loadWorks(next, { updateHistory: true }); });
 el.sort.addEventListener("change", () => { const next = structuredClone(state.query); [next.sort_by, next.sort_dir] = el.sort.value ? el.sort.value.split(":") : ["", ""]; loadWorks(next, { updateHistory: true }); });
 el.clearAll.addEventListener("click", () => { state.facetSearch = {}; loadWorks(emptyQuery(), { updateHistory: true }); });

@@ -1,0 +1,121 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Search input regression</title>
+<pre id="result">Running…</pre>
+<iframe id="app" title="Production search page" style="width:100%;height:650px"></iframe>
+<script>
+// Run `python -m http.server 8876 --bind 127.0.0.1` from the repo root,
+// then open /tests/test_input.html. No real API is used.
+const result = document.querySelector("#result");
+const frame = document.querySelector("#app");
+const assert = (condition, message) => { if (!condition) throw new Error(message); };
+const pause = () => new Promise((resolve) => setTimeout(resolve, 350));
+async function run() {
+  const html = await (await fetch("/static/index.html")).text();
+  const mock = `
+    window.requests = [];
+    window.historyCalls = [];
+    // srcdoc cannot navigate history; keep the production call observable.
+    history.pushState = history.replaceState = (...args) => historyCalls.push(args);
+    window.fetch = async (url, options = {}) => {
+      requests.push({ url, options });
+      if (url === '/api/session') return { ok: true, json: async () => ({ token: 'test-only' }) };
+      if (url === '/api/local-paths') return { ok: true, json: async () => ({ candidates: [] }) };
+      const params = new URL(url, parent.location.origin).searchParams;
+      const names = ['中文标签', '日本語かな', '한국어', 'café', 'ASMR'];
+      const data = {
+        works: [], total_works: 5, matched_works: 5,
+        query: { q: params.get('q') || '', path: params.get('path') || '', status: '',
+          tags: params.getAll('tag'), circles: [], voice_actors: [], release_years: [], sort_by: '', sort_dir: '' },
+        facets: Object.fromEntries(['tags', 'circles', 'voice_actors', 'release_years'].map(key =>
+          [key, names.map(name => ({ name, count: 1, selected: params.getAll('tag').includes(name) }))]))
+      };
+      return { ok: true, json: async () => data };
+    };
+  `;
+  const loaded = new Promise((resolve) => { frame.onload = resolve; });
+  frame.srcdoc = html.replace("<head>", `<head><base href="/"><script>${mock}<\/script>`);
+  await loaded;
+  await pause();
+  const win = frame.contentWindow, doc = frame.contentDocument;
+  const inputEvent = (input, composing = false) => input.dispatchEvent(new win.InputEvent("input", { bubbles: true, isComposing: composing }));
+  const compose = (input, type) => input.dispatchEvent(new win.CompositionEvent(type, { bubbles: true }));
+  const facet = (key) => doc.querySelector(`[data-facet-search="${key}"]`);
+  for (const key of ["tags", "circles", "voice_actors", "release_years"]) {
+    const input = facet(key);
+    input.closest("details").open = true;
+    input.focus();
+    compose(input, "compositionstart");
+    input.value = "zhong";
+    inputEvent(input, true);
+    assert(input.isConnected && doc.activeElement === input, `${key}: composing input was replaced or lost focus`);
+    // An unrelated response must also leave the composing node intact.
+    await win.loadWorks();
+    assert(facet(key) === input && doc.activeElement === input, `${key}: response interrupted composition`);
+    input.value = "中文";
+    compose(input, "compositionend");
+    inputEvent(input);
+    assert(facet(key) === input && input.value === "中文", `${key}: committed text lost`);
+    for (const word of ["中文", "日本語", "한국어", "café", "ASMR"]) {
+      input.value = word;
+      inputEvent(input);
+      const visible = [...input.closest("details").querySelectorAll(".facet-option")].filter(item => !item.hidden);
+      assert(visible.length === 1 && visible[0].textContent.includes(word), `${key}: filtering ${word}`);
+      assert(facet(key) === input, `${key}: typing replaced the input`);
+    }
+    input.value = "ASMR";
+    input.setSelectionRange(1, 1);
+    inputEvent(input);
+    assert(input.selectionStart === 1, `${key}: caret moved`);
+    input.value = "";
+    inputEvent(input);
+    assert([...input.closest("details").querySelectorAll(".facet-option")].filter(item => !item.hidden).length === 5, `${key}: clear did not restore options`);
+  }
+  for (const id of ["searchInput", "pathFilter", "pathInput"]) {
+    const input = doc.getElementById(id);
+    input.focus();
+    // A timer queued before composition starts must not submit preedit text.
+    input.value = "old";
+    inputEvent(input);
+    compose(input, "compositionstart");
+    const count = win.requests.length;
+    input.value = "zhong";
+    inputEvent(input, true);
+    await pause();
+    assert(win.requests.length === count, `${id}: requested during composition`);
+    input.value = "中文 日本語 한국어 café";
+    compose(input, "compositionend");
+    if (id !== "pathFilter") inputEvent(input);
+    await pause();
+    assert(win.requests.length === count + (id === "pathInput" ? 2 : 1), `${id}: commit should search once`);
+    const request = win.requests.at(-1);
+    const text = id === "pathInput" ? JSON.parse(request.options.body).query : new URL(request.url, location.origin).searchParams.get(id === "searchInput" ? "q" : "path");
+    assert(text === input.value, `${id}: Unicode query not preserved`);
+    input.value = "ASMR";
+    inputEvent(input);
+    await pause();
+    assert(win.requests.length === count + (id === "pathInput" ? 3 : 2), `${id}: plain typing stopped searching`);
+  }
+  const directory = doc.getElementById("pathInput");
+  const suggestions = doc.getElementById("pathSuggestions");
+  suggestions.innerHTML = '<button type="button">Test candidate</button>';
+  suggestions.hidden = false;
+  directory.focus();
+  for (const options of [{ key: "ArrowDown", isComposing: true }, { key: "Escape", keyCode: 229 }]) {
+    const event = new win.KeyboardEvent("keydown", { bubbles: true, cancelable: true, ...options });
+    directory.dispatchEvent(event);
+    assert(!event.defaultPrevented && doc.activeElement === directory && !suggestions.hidden, "IME candidate keys intercepted");
+  }
+  directory.dispatchEvent(new win.KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true, cancelable: true }));
+  assert(doc.activeElement === suggestions.querySelector("button"), "suggestion keyboard navigation stopped working");
+  const checkbox = facet("tags").closest("details").querySelector('input[type="checkbox"]');
+  checkbox.click();
+  await pause();
+  assert(new URL(win.requests.at(-1).url, location.origin).searchParams.has("tag"), "facet checkbox stopped searching");
+  doc.getElementById("clearAll").click();
+  await pause();
+  assert(facet("tags").value === "", "clear all did not clear facet search");
+  result.textContent = "PASS: composition, delayed render, four facets, Unicode, caret, clear, checkbox, three search inputs, IME keys";
+}
+run().catch(error => { result.textContent = `FAIL: ${error.stack}`; });
+</script>
