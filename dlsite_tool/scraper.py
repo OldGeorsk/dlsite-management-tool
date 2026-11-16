@@ -60,10 +60,10 @@ def parse_work_html(rj: str, body: str, work_url: str) -> Work:
     return Work(
         rj=rj,
         official_title=title,
-        circle=_table_value(body, ("サークル名", "ブランド")),
-        voice_actors=_table_value(body, ("声優",)),
-        release_date=_table_value(body, ("販売日", "配信開始日")),
-        tags=_table_value(body, ("ジャンル",)),
+        circle=_detail_value(body, ("サークル名", "ブランド")),
+        voice_actors=_detail_value(body, ("声優",)),
+        release_date=_detail_value(body, ("販売日", "配信開始日")),
+        tags=_detail_value(body, ("ジャンル",)),
         cover_url=_first_match(
             body,
             [
@@ -149,12 +149,24 @@ def _download(url: str, timeout: int, proxy: str = "") -> tuple[str, str]:
         raise RuntimeError(str(exc.reason)) from exc
 
 
-def _table_value(body: str, labels: tuple[str, ...]) -> str:
+def _detail_value(body: str, labels: tuple[str, ...]) -> str:
     for label in labels:
         pattern = rf"<tr[^>]*>\s*<t[hd][^>]*>\s*{re.escape(label)}\s*</t[hd]>\s*<td[^>]*>(.*?)</td>\s*</tr>"
         match = re.search(pattern, body, flags=re.I | re.S)
         if match:
             return _clean_html(match.group(1))
+        pattern = rf"<dt\b[^>]*>\s*{re.escape(label)}\s*</dt>\s*<dd\b[^>]*>(.*?)</dd>"
+        match = re.search(pattern, body, flags=re.I | re.S)
+        if match:
+            value = match.group(1)
+            if label == "声優":
+                actors = [
+                    _clean_html(link)
+                    for link in re.findall(r"<a\b[^>]*>(.*?)</a>", value, flags=re.I | re.S)
+                ]
+                if any(actors):
+                    return " / ".join(actor for actor in actors if actor)
+            return _clean_html(value)
     return ""
 
 
