@@ -7,7 +7,7 @@ const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 const { chromium } = require('playwright');
 const root = path.resolve(__dirname, '..');
-const output = path.join(root, 'docs/PRD/v12/verification');
+const output = process.env.STATS_SCREENSHOTS || path.join(root, 'docs/PRD/v12/verification');
 const python = process.env.STATS_PYTHON || 'python';
 const fixtureCode = `
 import json, sys
@@ -58,7 +58,7 @@ async function main() {
       catch (error) { res.writeHead(500); res.end(JSON.stringify({ error_detail: error.message })); }
       return;
     }
-    const allowed = { '/stats': 'static/stats.html', '/static/stats.css': 'static/stats.css', '/static/stats.js': 'static/stats.js', '/static/i18n.js': 'static/i18n.js' };
+    const allowed = { '/stats': 'static/stats.html', '/static/stats.css': 'static/stats.css', '/static/stats.js': 'static/stats.js', '/static/library.css': 'static/library.css', '/static/library.js': 'static/library.js', '/static/i18n.js': 'static/i18n.js' };
     const file = allowed[url.pathname];
     if (!file) { res.writeHead(404); res.end(); return; }
     res.setHeader('Content-Type', file.endsWith('.js') ? 'text/javascript' : file.endsWith('.css') ? 'text/css' : 'text/html');
@@ -216,7 +216,7 @@ async function main() {
     assert.ok((await page.locator('#discText').textContent()).includes('成功'));
     assert.equal(await page.locator('.legend-row').first().evaluate(el => getComputedStyle(el).outlineStyle), 'solid');
     assert.deepEqual(errors, []);
-    assert.ok(requests.every(url => ['/stats', '/api/stats', '/static/stats.css', '/static/stats.js', '/static/i18n.js', '/favicon.ico'].includes(url)));
+    assert.ok(requests.every(url => ['/stats', '/api/stats', '/static/stats.css', '/static/stats.js', '/static/i18n.js', '/static/library.css', '/static/library.js', '/favicon.ico'].includes(url)));
     fs.writeFileSync(path.join(output, 'result.json'), JSON.stringify({ result: 'PASS', synthetic: true, layouts, errors }, null, 2));
     console.log(JSON.stringify({ result: 'PASS', synthetic: true, layouts, errors }, null, 2));
   } finally {

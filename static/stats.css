@@ -1,12 +1,6 @@
 .stats-page {
-  --bg: #f2f5f7;
-  --paper: #fff;
-  --ink: #20334a;
-  --blue: #446be5;
   --teal: #178a80;
   --amber: #b86b1b;
-  --muted: #586b80;
-  --line: #dbe1e7;
   --soft: #f2f5ff;
   --data: Consolas, "Cascadia Mono", monospace;
   margin: 0;
@@ -26,18 +20,6 @@
 .stats-page button, .stats-page summary { cursor: pointer; }
 .stats-page h1 { font-size: 27px; letter-spacing: -.02em; }
 .stats-page h2 { font-size: 18px; font-weight: 650; }
-.stats-page .shell { width: min(1460px, calc(100% - 64px)); margin: auto; }
-.stats-page main { padding: 26px 0 40px; }
-.stats-page .masthead { border-bottom: 1px solid var(--line); background: var(--paper); }
-.stats-page .masthead-inner { min-height: 72px; display: flex; align-items: center; gap: 30px; }
-.stats-page .brand { display: flex; gap: 10px; align-items: center; font-weight: 700; white-space: nowrap; text-decoration: none; color: var(--ink); }
-.stats-page .brand-mark { width: 30px; height: 30px; border: 8px solid var(--teal); border-right-color: var(--blue); border-radius: 50%; }
-.stats-page .page-nav { align-self: stretch; display: flex; align-items: stretch; gap: 22px; }
-.stats-page .page-nav a { display: flex; align-items: center; border-bottom: 3px solid transparent; text-decoration: none; color: var(--muted); font-weight: 600; }
-.stats-page .page-nav a:is(:hover, [aria-current]) { border-color: var(--blue); color: var(--blue); }
-.stats-page .locale-switch { display: flex; gap: 3px; margin-left: auto; }
-.stats-page .locale-switch button { border: 1px solid var(--line); border-radius: 5px; padding: 5px 9px; background: var(--paper); color: var(--muted); }
-.stats-page .locale-switch button[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--paper); }
 .stats-page .page-head { margin-bottom: 20px; }
 .stats-page .page-head p { color: var(--muted); margin-top: 3px; }
 .stats-page .filters { display: flex; align-items: end; gap: 12px; background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 14px 18px; margin-bottom: 13px; }
@@ -125,8 +107,7 @@
 .stats-page .error-panel { border-color: var(--amber); }
 .stats-page .error-panel pre { white-space: pre-wrap; overflow-wrap: anywhere; }
 .stats-page .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
-@media (max-width: 1100px) {
-  .stats-page .shell { width: calc(100% - 36px); }
+@container (max-width: 1100px) {
   .stats-page .status-body { grid-template-columns: 145px minmax(0, 1fr); gap: 12px; }
   .stats-page .disc { width: 145px; }
   .stats-page .panel { padding: 17px; }
@@ -135,7 +116,7 @@
   .stats-page .mini-ring { width: 64px; }
   .stats-page .coverage-list { gap: 20px 8px; }
 }
-@media (max-width: 850px) {
+@container (max-width: 850px) {
   .stats-page .grid-top, .stats-page .grid-rings, .stats-page .rank-grid { grid-template-columns: 1fr; }
   .stats-page .kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .stats-page .kpi { padding: 14px; }
@@ -150,12 +131,7 @@
   .stats-page .rank-intro { flex-direction: column; gap: 4px; }
   .stats-page .panel-head { align-items: start; }
 }
-@media (max-width: 600px) {
-  .stats-page .shell { width: calc(100% - 24px); }
-  .stats-page .masthead-inner { flex-wrap: wrap; gap: 10px; padding-top: 12px; }
-  .stats-page .brand { font-size: 13px; }
-  .stats-page .page-nav { order: 3; width: 100%; min-height: 40px; }
-  .stats-page .locale-switch button { padding: 5px 7px; font-size: 12px; }
+@container (max-width: 600px) {
   .stats-page h1 { font-size: 25px; }
   .stats-page .kpis { grid-template-columns: 1fr 1fr; }
   .stats-page .filters { padding: 12px; }

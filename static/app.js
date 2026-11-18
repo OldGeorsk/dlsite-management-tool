@@ -1,5 +1,12 @@
 const state = {
   works: [],
+  page: 1,
+  loaded: false,
+  textPending: false,
+  detailWork: null,
+  detailSession: 0,
+  pathOpenId: 0,
+  pathUpdated: false,
   totalWorks: 0,
   matchedWorks: 0,
   query: emptyQuery(),
@@ -13,13 +20,13 @@ const state = {
   repairRj: "",
   repairMissingPath: "",
   repairCandidates: [],
-  repairMessage: "",
+  repairLocale: null,
   repairController: null,
   repairRequestId: 0,
   lastJob: null,
-  summaryKey: "",
 };
 
+const PAGE_SIZE = 12;
 const t = (key, params = {}) => I18n.t(key, params);
 
 const facetMeta = {
@@ -48,6 +55,16 @@ const el = {
   exportCurrent: document.querySelector("#exportCurrent"),
   exportAll: document.querySelector("#exportAll"),
   body: document.querySelector("#worksBody"),
+  table: document.querySelector(".table-wrap"),
+  pagination: document.querySelector("#pagination"),
+  prev: document.querySelector("#prevPage"),
+  next: document.querySelector("#nextPage"),
+  pageCount: document.querySelector("#pageCount"),
+  details: document.querySelector("#workDetails"),
+  detailPaths: document.querySelector("#detailPaths"),
+  detailRepair: document.querySelector("#detailRepair"),
+  preview: document.querySelector("#coverPreview"),
+  viewer: document.querySelector("#coverViewer"),
   summary: document.querySelector("#summary"),
   searchError: document.querySelector("#searchError"),
   jobPanel: document.querySelector("#jobPanel"),
@@ -98,39 +115,50 @@ function paramsFromQuery(query) {
   return params;
 }
 
-async function loadWorks(query = queryFromUrl(), { updateHistory = false, replace = false } = {}) {
+async function loadWorks(query = queryFromUrl(), { updateHistory = false, replace = false, resetPage = updateHistory } = {}) {
   const params = paramsFromQuery(query);
+  if (resetPage) state.page = 1;
   if (updateHistory) {
     const url = `${window.location.pathname}${params.size ? `?${params}` : ""}`;
     window.history[replace ? "replaceState" : "pushState"]({}, "", url);
   }
-  if (state.requestController) state.requestController.abort();
-  state.requestController = new AbortController();
+  state.requestController?.abort();
+  const controller = new AbortController();
+  state.requestController = controller;
   setSearchLoading(true);
   try {
-    const response = await fetch(`/api/works${params.size ? `?${params}` : ""}`, {
-      signal: state.requestController.signal,
-    });
+    const response = await fetch(`/api/works${params.size ? `?${params}` : ""}`, { signal: controller.signal });
     const data = await response.json();
+    if (controller.signal.aborted) return false;
     if (!response.ok) throw apiError(data, "error.worksRead");
     state.works = data.works || [];
     state.totalWorks = Number(data.total_works || 0);
     state.matchedWorks = Number(data.matched_works || 0);
     state.query = data.query || emptyQuery();
     state.facets = data.facets || {};
+    state.loaded = true;
     renderWorkbench();
     renderWorks();
+    if (el.details.open) {
+      state.detailWork = state.works.find((work) => work.rj === state.detailWork?.rj) || state.detailWork;
+      renderDetails();
+    }
     showSearchError("");
+    return true;
   } catch (error) {
-    if (error.name !== "AbortError") showSearchError(error.message, error.detail);
+    if (!controller.signal.aborted) {
+      showSearchError(error.message, error.detail);
+      if (!state.loaded) el.summary.textContent = "";
+    }
+    return false;
   } finally {
-    setSearchLoading(false);
+    if (state.requestController === controller) setSearchLoading(false);
   }
 }
 
 function renderWorkbench() {
-  if (document.activeElement !== el.search) el.search.value = state.query.q;
-  if (document.activeElement !== el.pathFilter) el.pathFilter.value = state.query.path;
+  if (!state.textPending && document.activeElement !== el.search) el.search.value = state.query.q;
+  if (!state.textPending && document.activeElement !== el.pathFilter) el.pathFilter.value = state.query.path;
   el.status.value = state.query.status;
   el.sort.value = state.query.sort_by ? `${state.query.sort_by}:${state.query.sort_dir}` : "";
   const exportParams = paramsFromQuery(state.query); exportParams.set("lang", I18n.locale);
@@ -163,11 +191,11 @@ function renderFacets() {
       });
     }
     // Keep the focused input attached: replacing it cancels native IME composition.
-    panel.open = panel.open || selectedCount > 0;
     panel.querySelector("summary").innerHTML = `${title}<span>${selectedCount ? t("facet.selected", { count: selectedCount }) : t("facet.items", { count: items.length })}</span>`;
     const input = panel.querySelector("[data-facet-search]");
     input.placeholder = t("facet.search", { title });
     if (document.activeElement !== input) input.value = state.facetSearch[key] || "";
+    input.setAttribute("aria-label", input.placeholder);
     renderFacetOptions(key, panel);
   });
 }
@@ -175,15 +203,21 @@ function renderFacets() {
 function renderFacetOptions(key, panel) {
   const term = (state.facetSearch[key] || "").toLocaleLowerCase();
   const visible = (state.facets[key] || []).filter((item) => !term || item.name.toLocaleLowerCase().includes(term));
-  panel.querySelector(".facet-options").innerHTML = visible.length ? visible.map((item) => `
+  const options = panel.querySelector(".facet-options");
+  const focusedValue = options.contains(document.activeElement) ? document.activeElement.value : null;
+  const scroll = options.scrollTop;
+  const selected = queryFromUrl()[key];
+  options.innerHTML = visible.length ? visible.map((item) => `
     <label class="facet-option">
-      <input type="checkbox" data-facet-value="${key}" value="${escapeAttr(item.name)}"${item.selected ? " checked" : ""}>
+      <input type="checkbox" data-facet-value="${key}" value="${escapeAttr(item.name)}"${selected.includes(item.name) ? " checked" : ""}>
       <span title="${escapeAttr(item.name)}">${escapeHtml(item.name)}</span>
       <strong>${item.count}</strong>
     </label>`).join("") : `<p class="facet-empty">${t("facet.empty")}</p>`;
-  panel.querySelectorAll("[data-facet-value]").forEach((input) => {
+  options.scrollTop = scroll;
+  options.querySelectorAll("[data-facet-value]").forEach((input) => {
+    if (input.value === focusedValue) input.focus({ preventScroll: true });
     input.addEventListener("change", () => {
-      const next = structuredClone(state.query);
+      const next = queryFromUrl();
       const values = new Set(next[input.dataset.facetValue] || []);
       if (input.checked) values.add(input.value); else values.delete(input.value);
       next[input.dataset.facetValue] = [...values];
@@ -204,49 +238,128 @@ function renderActiveFilters() {
     chips.push({ key: "sort", label: t("filter.sort", { value: el.sort.selectedOptions[0]?.textContent || t("filter.metric") }) });
   }
   el.activeFilters.hidden = chips.length === 0;
+  const expanded = el.activeFilters.querySelector("details")?.open;
   el.activeFilters.innerHTML = chips.length ? `
     <strong>${t("filter.current")}</strong>
     <div class="filter-chips">
-      ${chips.map((chip) => `<button class="filter-chip" type="button" data-chip-key="${chip.key}" data-chip-value="${escapeAttr(chip.value || "")}">${escapeHtml(chip.label)} <span aria-hidden="true">×</span></button>`).join("")}
-    </div>` : "";
+      ${chips.slice(0, 6).map(chipHtml).join("")}
+    </div>
+    ${chips.length > 6 ? `<details ${expanded ? "open" : ""}><summary>${t("filter.more", { count: chips.length - 6 })}</summary>
+      <div class="filter-chips">${chips.slice(6).map(chipHtml).join("")}</div></details>` : ""}` : "";
   el.activeFilters.querySelectorAll("[data-chip-key]").forEach((button) => {
     button.addEventListener("click", () => removeCondition(button.dataset.chipKey, button.dataset.chipValue));
   });
 }
 
+function chipHtml(chip) {
+  return `<button class="filter-chip" type="button" data-chip-key="${chip.key}" data-chip-value="${escapeAttr(chip.value || "")}">${escapeHtml(chip.label)} <span aria-hidden="true">×</span></button>`;
+}
+
 function removeCondition(key, value) {
-  const next = structuredClone(state.query);
+  const next = queryFromUrl();
   if (facetMeta[key]) next[key] = next[key].filter((item) => item !== value);
   else if (key === "sort") { next.sort_by = ""; next.sort_dir = ""; }
   else next[key] = "";
   loadWorks(next, { updateHistory: true });
 }
 
-function renderWorks(messageKey = "") {
-  if (messageKey) state.summaryKey = messageKey;
-  el.summary.textContent = state.summaryKey ? t(state.summaryKey) : t("works.summary", { total: state.totalWorks, matched: state.matchedWorks });
+function renderWorks() {
+  const totalPages = Math.max(1, Math.ceil(state.works.length / PAGE_SIZE));
+  state.page = Math.min(state.page, totalPages);
+  el.summary.textContent = state.loaded ? t("works.summary", { total: state.totalWorks, matched: state.matchedWorks }) : "";
+  el.pagination.hidden = state.matchedWorks === 0;
+  el.prev.disabled = state.page === 1;
+  el.next.disabled = state.page === totalPages;
+  el.pageCount.textContent = t("page.count", { page: state.page, total: totalPages });
+  const start = (state.page - 1) * PAGE_SIZE;
+  const focused = document.activeElement?.closest("[data-work-title], [data-cover]");
+  hideCoverPreview();
   el.body.innerHTML = state.works.length
-    ? state.works.map(rowHtml).join("")
-    : `<tr><td class="empty-results" colspan="12">${t("works.empty")}</td></tr>`;
-  bindPathActions();
+    ? state.works.slice(start, start + PAGE_SIZE).map(rowHtml).join("")
+    : state.loaded ? `<tr><td class="empty-results" colspan="5">${t(state.totalWorks ? "works.empty" : "works.emptyLibrary")}</td></tr>` : "";
+  if (focused) {
+    const key = focused.hasAttribute("data-work-title") ? "data-work-title" : "data-cover";
+    el.body.querySelector(`[${key}="${CSS.escape(focused.getAttribute(key))}"]`)?.focus({ preventScroll: true });
+  }
+}
+
+function workTitle(work) {
+  return work.official_title || work.local_title || work.rj;
+}
+
+function webUrl(value) {
+  if (!value) return "";
+  const url = value.startsWith("//") ? `https:${value}` : value;
+  return /^https?:\/\//i.test(url) ? url : "";
 }
 
 function rowHtml(work) {
-  const statusClass = work.fetch_status === "成功" ? "ok" : work.fetch_status === "失败" ? "fail" : "";
-  const statusTitle = work.failure_reason ? ` title="${escapeAttr(work.failure_reason)}"` : "";
-  const metricsTitle = metricTitle(work);
-  const metricTitleAttr = metricsTitle ? ` title="${escapeAttr(metricsTitle)}"` : "";
-  const repairOpen = state.repairRj === work.rj;
+  const statusClass = { "成功": "ok", "部分成功": "partial", "失败": "fail" }[work.fetch_status] || "";
+  const title = workTitle(work);
+  const cover = webUrl(work.cover_url);
+  const placeholder = `<span class="cover-placeholder" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m3 16 5-5 4 4 3-3 6 6"/><circle cx="15" cy="8" r="1"/></svg></span>`;
+  const coverHtml = cover
+    ? `<button class="work-cover" type="button" data-cover="${escapeAttr(work.rj)}" aria-haspopup="dialog" aria-label="${escapeAttr(t("cover.open", { title }))}">
+      ${placeholder}<img alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" src="${escapeAttr(cover)}"></button>`
+    : `<span class="work-cover">${placeholder}</span>`;
   return `<tr data-work-row="${escapeAttr(work.rj)}">
-    <td>${escapeHtml(work.rj)}</td><td>${escapeHtml(work.local_title)}</td>
-    <td>${linkOrText(work.official_title, work.work_url)}</td><td>${escapeHtml(work.circle)}</td>
-    <td>${escapeHtml(work.voice_actors)}</td><td>${escapeHtml(work.release_date)}</td>
-    <td>${escapeHtml(work.tags)}</td><td class="metric"${metricTitleAttr}>${formatCount(work.sales_count)}</td>
-    <td class="metric"${metricTitleAttr}>${formatRating(work.rating_average)}</td>
-    <td class="metric"${metricTitleAttr}>${formatCount(work.rating_count)}</td>
-    <td class="local-paths">${pathButtons(work)}</td>
-    <td><span class="status ${statusClass}"${statusTitle}>${escapeHtml(statusLabel(work.fetch_status))}</span></td>
-  </tr>${repairOpen ? repairRowHtml(work) : ""}`;
+    <td><div class="work-cell">${coverHtml}<div>
+      <button class="work-title" type="button" data-work-title="${escapeAttr(work.rj)}" aria-haspopup="dialog">${escapeHtml(title)}</button>
+      <small class="work-rj">${escapeHtml(work.rj)}</small>
+    </div></div></td>
+    <td class="secondary-column">${escapeHtml(work.circle || "—")}</td>
+    <td class="secondary-column">${escapeHtml(work.voice_actors || "—")}</td>
+    <td class="secondary-column metric"><strong>${formatRating(work.rating_average)}</strong><small>${formatCount(work.rating_count)}</small></td>
+    <td><span class="status ${statusClass}">${escapeHtml(statusLabel(work.fetch_status))}</span></td>
+  </tr>`;
+}
+
+function renderDetails() {
+  const work = state.detailWork;
+  if (!work) return;
+  document.querySelector("#detailRj").textContent = work.rj;
+  document.querySelector("#workDetailsTitle").textContent = workTitle(work);
+  const activePath = el.detailPaths.contains(document.activeElement) ? document.activeElement.dataset.path : null;
+  const paths = pathButtons(work);
+  if (el.detailPaths.innerHTML !== paths) {
+    el.detailPaths.innerHTML = paths;
+    [...el.detailPaths.querySelectorAll("[data-path]")].find((button) => button.dataset.path === activePath)?.focus({ preventScroll: true });
+  }
+  document.querySelector("#detailPathStatus").textContent = state.pathUpdated ? t("works.pathUpdated") : "";
+  const metrics = [
+    ["table.sales", formatCount(work.sales_count)],
+    ["table.average", formatRating(work.rating_average)],
+    ["table.ratingCount", formatCount(work.rating_count)],
+  ];
+  const fields = [
+    ["table.rj", escapeHtml(work.rj)], ["table.localTitle", escapeHtml(work.local_title || "—")],
+    ["table.officialTitle", linkOrText(work.official_title, webUrl(work.work_url)) || "—"],
+    ["table.circle", escapeHtml(work.circle || "—")], ["table.voiceActors", escapeHtml(work.voice_actors || "—")],
+    ["table.releaseDate", escapeHtml(work.release_date || "—")], ["table.tags", escapeHtml(work.tags || "—")],
+    ["table.status", escapeHtml(statusLabel(work.fetch_status))],
+  ];
+  const metricNote = metricTitle(work);
+  document.querySelector("#detailMetadata").innerHTML = `
+    <section><h3>${t("detail.metrics")}</h3><dl class="detail-metrics">
+      ${metrics.map(([label, value]) => `<div><dt>${t(label)}</dt><dd>${value}</dd></div>`).join("")}</dl>
+      ${metricNote ? `<p class="detail-note">${escapeHtml(metricNote)}</p>` : ""}
+    </section>
+    <section><h3>${t("detail.metadata")}</h3><dl class="detail-fields">
+      ${fields.map(([label, value]) => `<dt>${t(label)}</dt><dd>${value}</dd>`).join("")}</dl>
+      ${work.failure_reason ? `<p class="detail-note">${escapeHtml(work.failure_reason)}</p>` : ""}
+    </section>`;
+}
+
+function showDetails(rj) {
+  const work = state.works.find((item) => item.rj === rj);
+  if (!work) return;
+  hideCoverPreview();
+  state.detailWork = work;
+  state.detailSession += 1;
+  state.pathUpdated = false;
+  renderDetails();
+  el.details.querySelector(".detail-body").scrollTop = 0;
+  el.details.showModal();
 }
 
 function pathButtons(work) {
@@ -255,8 +368,8 @@ function pathButtons(work) {
   return paths.map((path) => `<button class="path-link" type="button" data-open-saved data-rj="${escapeAttr(work.rj)}" data-path="${escapeAttr(path)}" title="${escapeAttr(t("works.openPath"))}">${escapeHtml(path)}</button>`).join("");
 }
 
-function repairRowHtml(work) {
-  const candidates = state.repairCandidates.length ? state.repairCandidates.map((item) => `
+function repairCandidatesHtml(work) {
+  return state.repairCandidates.length ? state.repairCandidates.map((item) => `
     <li class="repair-candidate">
       <span title="${escapeAttr(item.path)}">${escapeHtml(item.path)}</span>
       <div>
@@ -264,19 +377,20 @@ function repairRowHtml(work) {
         ${item.save_token ? `<button type="button" class="mini-button primary" data-save-candidate="${escapeAttr(item.save_token)}" data-rj="${escapeAttr(work.rj)}">${t("common.addPath")}</button>` : ""}
       </div>
     </li>`).join("") : `<li class="repair-empty">${t("repair.empty")}</li>`;
-  return `<tr class="repair-row"><td colspan="12">
-    <section class="path-repair" aria-live="polite">
+}
+
+function repairFormHtml(work) {
+  return `<section class="path-repair">
       <div class="repair-heading"><div><strong>${t("repair.title", { rj: escapeHtml(work.rj) })}</strong><p>${t("repair.missing", { path: escapeHtml(state.repairMissingPath) })}</p></div><button type="button" class="text-button" data-close-repair>${t("common.close")}</button></div>
-      <p class="repair-message">${escapeHtml(state.repairMessage || t("repair.locating"))}</p>
-      <ul class="repair-candidates">${candidates}</ul>
+      <p class="repair-message" role="status"></p>
+      <ul class="repair-candidates"></ul>
       <div class="repair-tools">
         <label><span>${t("repair.keyword")}</span><input data-repair-query placeholder="${escapeAttr(t("repair.keywordPlaceholder"))}"></label>
         <button type="button" class="button secondary" data-repair-search data-rj="${escapeAttr(work.rj)}">${t("repair.search")}</button>
         <label><span>${t("repair.manual")}</span><input data-manual-path placeholder="${escapeAttr(t("repair.manualPlaceholder", { rj: work.rj }))}"></label>
         <button type="button" class="button secondary" data-add-manual data-rj="${escapeAttr(work.rj)}">${t("common.addPath")}</button>
       </div>
-    </section>
-  </td></tr>`;
+    </section>`;
 }
 
 async function ensureLocalSession() {
@@ -300,14 +414,46 @@ async function sensitivePost(url, body, signal) {
   return data;
 }
 
+function clearRepair() {
+  state.repairController?.abort();
+  state.repairRequestId += 1;
+  state.repairRj = "";
+  state.repairMissingPath = "";
+  state.repairCandidates = [];
+  state.repairLocale = null;
+  el.detailRepair.replaceChildren();
+}
+
+function renderRepair({ relabel = false } = {}) {
+  const work = state.detailWork;
+  if (!el.details.open || state.repairRj !== work?.rj) return;
+  if (!el.detailRepair.firstElementChild || relabel) {
+    const values = [...el.detailRepair.querySelectorAll("input")].map((input) => input.value);
+    el.detailRepair.innerHTML = repairFormHtml(work);
+    el.detailRepair.querySelectorAll("input").forEach((input, index) => { input.value = values[index] || ""; });
+  }
+  el.detailRepair.querySelector(".repair-message").textContent = t(...state.repairLocale);
+  const list = el.detailRepair.querySelector(".repair-candidates");
+  if (list.contains(document.activeElement)) el.detailRepair.querySelector("[data-repair-query]").focus();
+  list.innerHTML = repairCandidatesHtml(work);
+}
+
 async function openSavedPath(rj, path) {
+  const session = state.detailSession;
+  const openId = ++state.pathOpenId;
   try {
     await sensitivePost("/api/paths/open-saved", { rj, path });
   } catch (error) {
+    if (!el.details.open || session !== state.detailSession || openId !== state.pathOpenId) return;
     if (error.status === 404 && error.data?.status === "missing") {
-      state.repairRj = rj; state.repairMissingPath = path; state.repairCandidates = []; state.repairMessage = t("repair.locating");
-      renderWorks();
-      await searchRepairPaths(rj, rj, "rj");
+      clearRepair();
+      state.pathUpdated = false;
+      document.querySelector("#detailPathStatus").textContent = "";
+      state.repairRj = rj;
+      state.repairMissingPath = path;
+      const pending = searchRepairPaths(rj, rj, "rj");
+      el.detailRepair.querySelector("[data-repair-query]")?.focus();
+      await pending;
       return;
     }
     alert(error.message);
@@ -315,52 +461,73 @@ async function openSavedPath(rj, path) {
 }
 
 async function searchRepairPaths(rj, query, mode = "keyword", retried = false) {
-  state.repairRequestId += 1;
-  const requestId = state.repairRequestId;
-  if (state.repairController) state.repairController.abort();
+  const requestId = ++state.repairRequestId;
+  state.repairController?.abort();
   state.repairController = new AbortController();
-  state.repairMessage = t("repair.searching"); renderWorks();
+  state.repairCandidates = [];
+  state.repairLocale = ["repair.searching"];
+  renderRepair();
   try {
     const data = await sensitivePost("/api/local-paths", { mode, query, rj }, state.repairController.signal);
     if (requestId !== state.repairRequestId) return;
     state.repairCandidates = data.candidates || [];
-    state.repairMessage = state.repairCandidates.length ? t("repair.found", { count: state.repairCandidates.length }) : t("repair.none");
+    state.repairLocale = state.repairCandidates.length ? ["repair.found", { count: state.repairCandidates.length }] : ["repair.none"];
   } catch (error) {
     if (error.name === "AbortError" || requestId !== state.repairRequestId) return;
     if (!retried && error.status === 503 && error.code === "error.everything_busy") {
       await new Promise((resolve) => setTimeout(resolve, 80));
-      return searchRepairPaths(rj, query, mode, true);
+      if (requestId === state.repairRequestId) return searchRepairPaths(rj, query, mode, true);
+      return;
     }
-    state.repairCandidates = []; state.repairMessage = t("repair.fallback", { message: error.message });
+    state.repairCandidates = [];
+    state.repairLocale = ["repair.fallback", { message: error.message }];
   }
-  renderWorks();
+  renderRepair();
 }
 
-function bindPathActions() {
-  el.body.querySelectorAll("[data-open-saved]").forEach((button) => button.addEventListener("click", () => openSavedPath(button.dataset.rj, button.dataset.path)));
-  el.body.querySelector("[data-close-repair]")?.addEventListener("click", () => { state.repairRj = ""; state.repairCandidates = []; renderWorks(); bindPathActions(); });
-  el.body.querySelector("[data-repair-search]")?.addEventListener("click", (event) => {
-    const input = el.body.querySelector("[data-repair-query]");
-    if ((input?.value.trim().length || 0) < 2) return alert(t("path.minimum"));
-    searchRepairPaths(event.currentTarget.dataset.rj, input.value.trim());
-  });
-  el.body.querySelectorAll("[data-open-candidate]").forEach((button) => button.addEventListener("click", async () => {
-    try { await sensitivePost("/api/paths/open-candidate", { rj: button.dataset.rj, token: button.dataset.openCandidate }); button.disabled = true; } catch (error) { alert(error.message); }
-  }));
-  el.body.querySelectorAll("[data-save-candidate]").forEach((button) => button.addEventListener("click", async () => {
-    try { await sensitivePost("/api/paths/add-candidate", { rj: button.dataset.rj, token: button.dataset.saveCandidate }); await refreshAfterPathAdded(); } catch (error) { alert(error.message); }
-  }));
-  el.body.querySelector("[data-add-manual]")?.addEventListener("click", async (event) => {
-    const input = el.body.querySelector("[data-manual-path]");
-    try { await sensitivePost("/api/paths/add-manual", { rj: event.currentTarget.dataset.rj, path: input.value.trim() }); await refreshAfterPathAdded(); } catch (error) { alert(error.message); }
-  });
-}
+el.details.addEventListener("click", async (event) => {
+  const button = event.target.closest("button");
+  if (!button) return;
+  const { rj, path, openCandidate, saveCandidate } = button.dataset;
+  if (button.matches("[data-open-saved]")) return openSavedPath(rj, path);
+  if (button.matches("[data-close-repair]")) {
+    const missing = state.repairMissingPath;
+    clearRepair();
+    [...el.detailPaths.querySelectorAll("[data-path]")].find((item) => item.dataset.path === missing)?.focus();
+    return;
+  }
+  if (button.matches("[data-repair-search]")) {
+    const query = el.detailRepair.querySelector("[data-repair-query]").value.trim();
+    if (query.length < 2) return alert(t("path.minimum"));
+    return searchRepairPaths(rj, query);
+  }
+  if (!button.matches("[data-open-candidate], [data-save-candidate], [data-add-manual]")) return;
 
-async function refreshAfterPathAdded() {
-  state.repairRj = ""; state.repairCandidates = [];
-  await loadWorks(state.query);
-  renderWorks("works.pathUpdated");
-}
+  const session = state.detailSession;
+  button.disabled = true;
+  try {
+    if (openCandidate) {
+      await sensitivePost("/api/paths/open-candidate", { rj, token: openCandidate });
+      return;
+    }
+    if (saveCandidate) {
+      await sensitivePost("/api/paths/add-candidate", { rj, token: saveCandidate });
+    } else {
+      const path = el.detailRepair.querySelector("[data-manual-path]").value.trim();
+      await sensitivePost("/api/paths/add-manual", { rj, path });
+    }
+    if (session === state.detailSession && el.details.open) {
+      clearRepair();
+      state.pathUpdated = true;
+      renderDetails();
+      el.detailPaths.querySelector("button")?.focus();
+    }
+    await loadWorks(queryFromUrl());
+  } catch (error) {
+    button.disabled = false;
+    if (session === state.detailSession && el.details.open) alert(error.message);
+  }
+});
 
 async function loadPathSuggestions(text, requestId, retried = false) {
   if (state.pathController) state.pathController.abort();
@@ -408,7 +575,7 @@ async function startJob(url, body, message) {
 
 function startPolling(jobId, message) {
   if (!jobId) return alert(t("job.missingId"));
-  setBusy(true, t(message));
+  setBusy(true);
   showJob({ status: "running", stage_code: "job.stage.preparing", total: 0, completed: 0, current_rj: "", message_code: message, message_params: {}, last_error: "" });
   if (state.pollTimer) clearInterval(state.pollTimer);
   pollJob(jobId);
@@ -423,7 +590,6 @@ async function pollJob(jobId) {
     showJob(data.job);
     if (data.job.status !== "running") {
       stopPolling(); setBusy(false); await loadWorks(queryFromUrl());
-      renderWorks(data.job.status === "success" ? "job.doneRefresh" : "job.failedRefresh");
     }
   } catch (error) { stopPolling(); setBusy(false); alert(error.message); }
 }
@@ -471,9 +637,19 @@ function escapeHtml(value) {
 }
 
 function escapeAttr(value) { return escapeHtml(value).replaceAll("\n", " "); }
-function setBusy(busy, text = "") { el.scan.disabled = busy; el.fetchButton.disabled = busy; el.metricsButton.disabled = busy; if (text) el.summary.textContent = text; }
-function setSearchLoading(loading) { document.body.classList.toggle("search-loading", loading); }
-function showSearchError(message, detail = "") { el.searchError.hidden = !message; el.searchError.innerHTML = message ? `${escapeHtml(message)}${detail ? `<details><summary>${t("error.details")}</summary><pre>${escapeHtml(detail)}</pre></details>` : ""}` : ""; }
+function setBusy(busy) {
+  for (const button of [el.scan, el.fetchButton, el.metricsButton]) button.disabled = busy;
+}
+function setSearchLoading(loading) {
+  document.body.classList.toggle("search-loading", loading);
+  el.table.setAttribute("aria-busy", String(loading));
+}
+function showSearchError(message, detail = "") {
+  el.searchError.hidden = !message;
+  el.searchError.innerHTML = message ? `<p>${escapeHtml(message)}</p>
+    ${detail ? `<details><summary>${t("error.details")}</summary><pre>${escapeHtml(detail)}</pre></details>` : ""}
+    <button type="button" class="text-button">${t("works.retry")}</button>` : "";
+}
 function statusLabel(status) { return t(`status.${status}`); }
 function apiError(data, fallbackKey) { const key = data?.error_code || fallbackKey; const error = new Error(t(key, data?.error_params || {}) === key ? t(fallbackKey) : t(key, data?.error_params || {})); error.code = key; error.detail = data?.error_detail || ((data?.error && key === "error.unexpected") ? data.error : ""); return error; }
 function debounce(callback, delay = 250) {
@@ -490,11 +666,20 @@ function bindTextInput(input, callback) {
   input.addEventListener("input", (event) => { if (!composing && !event.isComposing) callback(); });
 }
 
-const updateTextQuery = debounce(() => {
-  const next = structuredClone(state.query);
-  next.q = el.search.value.trim(); next.path = el.pathFilter.value.trim();
-  loadWorks(next, { updateHistory: true, replace: true });
+const submitTextQuery = debounce((q, path) => {
+  state.textPending = false;
+  loadWorks({ ...queryFromUrl(), q, path }, { updateHistory: true, replace: true });
 });
+
+function updateTextQuery() {
+  state.textPending = true;
+  submitTextQuery(el.search.value.trim(), el.pathFilter.value.trim());
+}
+
+updateTextQuery.cancel = () => {
+  state.textPending = false;
+  submitTextQuery.cancel();
+};
 
 el.scan.addEventListener("click", scan);
 bindTextInput(el.path, updatePathSuggestions);
@@ -515,11 +700,141 @@ el.fetchButton.addEventListener("click", fetchMissing);
 el.metricsButton.addEventListener("click", refreshMetrics);
 bindTextInput(el.search, updateTextQuery);
 bindTextInput(el.pathFilter, updateTextQuery);
-el.status.addEventListener("change", () => { const next = structuredClone(state.query); next.status = el.status.value; loadWorks(next, { updateHistory: true }); });
-el.sort.addEventListener("change", () => { const next = structuredClone(state.query); [next.sort_by, next.sort_dir] = el.sort.value ? el.sort.value.split(":") : ["", ""]; loadWorks(next, { updateHistory: true }); });
-el.clearAll.addEventListener("click", () => { state.facetSearch = {}; loadWorks(emptyQuery(), { updateHistory: true }); });
-window.addEventListener("popstate", () => loadWorks(queryFromUrl()));
-window.addEventListener("localechange", () => { if (state.repairRj) state.repairMessage = t("repair.locating"); renderWorkbench(); renderWorks(); if (state.lastJob) showJob(state.lastJob); });
+el.status.addEventListener("change", () => { const next = queryFromUrl(); next.status = el.status.value; loadWorks(next, { updateHistory: true }); });
+el.sort.addEventListener("change", () => { const next = queryFromUrl(); [next.sort_by, next.sort_dir] = el.sort.value ? el.sort.value.split(":") : ["", ""]; loadWorks(next, { updateHistory: true }); });
+el.clearAll.addEventListener("click", () => { updateTextQuery.cancel(); state.facetSearch = {}; loadWorks(emptyQuery(), { updateHistory: true }); });
+window.addEventListener("popstate", () => {
+  updateTextQuery.cancel();
+  loadWorks(queryFromUrl(), { resetPage: true });
+});
+window.addEventListener("localechange", () => {
+  renderWorkbench();
+  renderWorks();
+  if (el.details.open) {
+    renderDetails();
+    renderRepair({ relabel: true });
+  }
+  if (state.lastJob) showJob(state.lastJob);
+});
+
+el.searchError.addEventListener("click", (event) => {
+  if (event.target.closest("button")) loadWorks(queryFromUrl());
+});
+
+function changePage(delta) {
+  state.page += delta;
+  renderWorks();
+  (delta > 0 && !el.next.disabled ? el.next : el.prev.disabled ? el.next : el.prev).focus({ preventScroll: true });
+  el.table.scrollIntoView({ block: "nearest" });
+}
+
+el.prev.addEventListener("click", () => changePage(-1));
+el.next.addEventListener("click", () => changePage(1));
+
+const settingsMenu = document.querySelector(".settings");
+document.addEventListener("click", (event) => {
+  document.querySelectorAll(".facet-panel[open], .settings[open]").forEach((menu) => {
+    if (!menu.contains(event.target)) menu.open = false;
+  });
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape" || event.defaultPrevented || event.isComposing || el.details.open || el.viewer.open) return;
+  hideCoverPreview();
+  const menu = event.target.closest(".facet-panel[open], .settings[open]")
+    || el.facets.querySelector(".facet-panel[open]") || (settingsMenu.open ? settingsMenu : null);
+  if (menu) {
+    menu.open = false;
+    menu.querySelector("summary").focus();
+  }
+});
+
+for (const dialog of [el.details, el.viewer]) {
+  dialog.querySelector(".close-button").addEventListener("click", () => dialog.close());
+  dialog.addEventListener("click", (event) => {
+    if (event.target === dialog) {
+      const { left, top, right, bottom } = dialog.getBoundingClientRect();
+      if (event.clientX < left || event.clientX > right || event.clientY < top || event.clientY > bottom) dialog.close();
+    }
+  });
+}
+
+el.details.addEventListener("close", () => {
+  const rj = state.detailWork?.rj;
+  clearRepair();
+  state.detailWork = null;
+  (el.body.querySelector(`[data-work-title="${CSS.escape(rj || "")}"]`) || el.search).focus({ preventScroll: true });
+});
+
+const coverSize = document.querySelector("#coverSize");
+const coverHover = document.querySelector("#coverHover");
+const previewImage = el.preview.querySelector("img");
+const viewerImage = el.viewer.querySelector("img");
+const hoverPointer = matchMedia("(hover: hover) and (pointer: fine)");
+let coverTimer;
+
+function hideCoverPreview() {
+  clearTimeout(coverTimer);
+  el.preview.hidden = true;
+  previewImage.removeAttribute("src");
+}
+
+el.body.addEventListener("pointerover", (event) => {
+  const button = event.target.closest("[data-cover]");
+  const img = button?.querySelector("img");
+  if (!img || img.hidden || button.contains(event.relatedTarget) || event.pointerType === "touch"
+    || !coverHover.checked || !hoverPointer.matches || !img.naturalWidth) return;
+  coverTimer = setTimeout(() => {
+    const bounds = button.getBoundingClientRect();
+    const width = Math.min(320, document.documentElement.clientWidth - 16);
+    const height = Math.min(254, window.innerHeight - 16);
+    const left = bounds.right + width + 8 <= document.documentElement.clientWidth
+      ? bounds.right + 8 : Math.max(8, bounds.left - width - 8);
+    el.preview.style.left = `${left}px`;
+    el.preview.style.top = `${Math.max(8, Math.min(bounds.top, window.innerHeight - height - 8))}px`;
+    previewImage.src = img.src;
+    el.preview.hidden = false;
+  }, 300);
+});
+el.body.addEventListener("pointerout", (event) => {
+  const button = event.target.closest("[data-cover]");
+  if (button && !button.contains(event.relatedTarget)) hideCoverPreview();
+});
+el.body.addEventListener("error", (event) => {
+  if (event.target.matches?.(".work-cover img")) {
+    event.target.hidden = true;
+    event.target.parentElement.disabled = true;
+  }
+}, true);
+window.addEventListener("scroll", hideCoverPreview, { passive: true });
+window.addEventListener("resize", hideCoverPreview);
+coverHover.addEventListener("change", hideCoverPreview);
+coverSize.addEventListener("change", () => {
+  document.body.dataset.coverSize = coverSize.value;
+  hideCoverPreview();
+});
+
+el.body.addEventListener("click", (event) => {
+  const title = event.target.closest("[data-work-title]");
+  if (title) return showDetails(title.dataset.workTitle);
+  const button = event.target.closest("[data-cover]");
+  if (!button || button.disabled) return;
+  const work = state.works.find((item) => item.rj === button.dataset.cover);
+  if (!work) return;
+  hideCoverPreview();
+  el.viewer.querySelector("h2").textContent = workTitle(work);
+  viewerImage.hidden = false;
+  el.viewer.querySelector(".cover-art p").hidden = true;
+  viewerImage.src = webUrl(work.cover_url);
+  el.viewer.showModal();
+});
+
+viewerImage.addEventListener("error", () => {
+  viewerImage.hidden = true;
+  el.viewer.querySelector(".cover-art p").hidden = false;
+});
+el.viewer.addEventListener("close", () => {
+  viewerImage.removeAttribute("src");
+});
 
 I18n.bindSwitcher();
 loadWorks(queryFromUrl());

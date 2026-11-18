@@ -5,14 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title data-i18n="stats.title">资料库概览 · DLsite 音声整理工具</title>
   <link rel="stylesheet" href="/static/stats.css">
+  <link rel="stylesheet" href="/static/library.css">
 </head>
-<body class="stats-page">
-  <header class="masthead"><div class="shell masthead-inner">
-    <a class="brand" href="/"><span class="brand-mark" aria-hidden="true"></span><span data-i18n="stats.brand">DLsite 音声库</span></a>
+<body class="library-layout stats-page">
+  <aside class="library-sidebar">
+    <span class="library-brand" data-i18n="stats.brand">DLsite 音声库</span>
     <nav class="page-nav" aria-label="页面导航" data-i18n-aria="nav.label"><a href="/" data-i18n="nav.works">作品列表</a><a href="/stats" aria-current="page" data-i18n="nav.stats">资料库概览</a></nav>
     <div class="locale-switch" aria-label="Language"><button type="button" data-locale="zh-CN">中文</button><button type="button" data-locale="en">English</button></div>
-  </div></header>
-  <main class="shell">
+  </aside>
+  <div class="sidebar-divider" tabindex="0" role="separator" aria-orientation="vertical"
+    aria-label="调整侧栏宽度" data-i18n-aria="layout.resize"></div>
+  <main class="library-main">
     <div class="page-head"><h1 data-i18n="stats.heading">资料库概览</h1><p data-i18n="stats.subtitle">当前收藏的规模、分布与资料完整度。</p></div>
     <form id="statsFilters" class="filters">
       <label><span data-i18n="stats.releaseYear">发售年份</span><select id="yearFilter"><option value="" data-i18n="stats.allYears">全部年份</option></select></label>
@@ -36,6 +39,7 @@
       <section class="rank-grid" aria-label="收藏偏好排行" data-i18n-aria="stats.rankingLabel"><article class="card rank-card" data-ranking="tags"></article><article class="card rank-card" data-ranking="voice_actors"></article><article class="card rank-card" data-ranking="circles"></article></section>
     </div>
   </main>
+  <script src="/static/library.js"></script>
   <script src="/static/i18n.js"></script><script src="/static/stats.js"></script>
 </body>
 </html>

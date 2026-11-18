@@ -5,48 +5,55 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title data-i18n="app.title">DLsite 音声整理工具</title>
   <link rel="stylesheet" href="/static/styles.css">
+  <link rel="stylesheet" href="/static/library.css">
 </head>
-<body>
-  <main class="app">
-    <header class="topbar">
-      <div>
-        <h1 data-i18n="app.title">DLsite 音声整理工具</h1>
-        <p id="summary" data-i18n="app.emptySummary">本地缓存中暂无作品</p>
-        <nav class="page-nav" aria-label="页面导航" data-i18n-aria="nav.label">
-          <a class="active" href="/" data-i18n="nav.works">作品列表</a>
-          <a href="/stats" data-i18n="nav.stats">资料库概览</a>
-        </nav>
-      </div>
-      <div class="export-actions">
-        <div class="locale-switch" aria-label="Language"><button type="button" data-locale="zh-CN">中文</button><button type="button" data-locale="en">English</button></div>
-        <a id="exportCurrent" class="button secondary" href="/api/export" data-i18n="export.current">导出当前结果</a>
-        <a id="exportAll" class="button secondary" href="/api/export" data-i18n="export.all">导出全库</a>
-      </div>
-    </header>
-
-    <section class="panel controls">
+<body class="library-layout works-page">
+  <aside class="library-sidebar">
+    <span class="library-brand" data-i18n="stats.brand">DLsite 音声库</span>
+    <nav class="page-nav" aria-label="页面导航" data-i18n-aria="nav.label">
+      <a aria-current="page" href="/" data-i18n="nav.works">作品列表</a>
+      <a href="/stats" data-i18n="nav.stats">资料库概览</a>
+    </nav>
+    <section class="sidebar-scan">
       <label class="path-field path-picker">
         <span data-i18n="field.library">音声库目录</span>
-        <input id="pathInput" autocomplete="off" aria-autocomplete="list" aria-controls="pathSuggestions" placeholder="输入至少 2 个字符，通过 Everything 定位资料库目录" data-i18n-placeholder="field.libraryPlaceholder">
+        <input id="pathInput" autocomplete="off" aria-autocomplete="list" aria-controls="pathSuggestions" placeholder="输入目录名称或路径" data-i18n-placeholder="field.libraryPlaceholder">
         <div id="pathSuggestions" class="path-suggestions" role="listbox" hidden></div>
-        <small id="pathHint" class="path-hint" data-i18n="field.pathHint">不会进行空查询，候选不会保存到历史记录。</small>
-      </label>
-      <label class="proxy-field">
-        <span data-i18n="field.proxy">代理</span>
-        <input id="proxyInput" value="http://127.0.0.1:7892" placeholder="例如 http://127.0.0.1:7892" data-i18n-placeholder="field.proxyPlaceholder">
-      </label>
-      <label class="check">
-        <input id="fetchInput" type="checkbox">
-        <span data-i18n="action.fetchAfterScan">扫描后抓取官网信息</span>
+        <small id="pathHint" class="path-hint" data-i18n="field.pathHint">输入至少 2 个字符可用 Everything 查找，候选不留历史。</small>
       </label>
       <button id="scanButton" class="button" data-i18n="action.scan">扫描目录</button>
-      <button id="fetchButton" class="button secondary" data-i18n="action.fetch">补抓官网信息</button>
-      <label class="check">
-        <input id="forceMetricsInput" type="checkbox">
-        <span data-i18n="action.forceMetrics">强制刷新已有指标</span>
-      </label>
-      <button id="metricsButton" class="button secondary" data-i18n="action.metrics">刷新销量与评价</button>
     </section>
+    <div class="locale-switch" aria-label="Language"><button type="button" data-locale="zh-CN">中文</button><button type="button" data-locale="en">English</button></div>
+  </aside>
+  <div class="sidebar-divider" tabindex="0" role="separator" aria-orientation="vertical"
+    aria-label="调整侧栏宽度" data-i18n-aria="layout.resize"></div>
+  <main class="library-main">
+    <header class="topbar">
+      <h1 data-i18n="nav.works">作品列表</h1>
+      <div class="export-actions">
+        <button id="fetchButton" class="button secondary" data-i18n="action.fetch">补抓官网信息</button>
+        <button id="metricsButton" class="button secondary" data-i18n="action.metrics">刷新销量与评价</button>
+        <a id="exportCurrent" class="button secondary" href="/api/export" data-i18n="export.current">导出当前结果</a>
+        <a id="exportAll" class="button secondary" href="/api/export" data-i18n="export.all">导出全库</a>
+        <details class="settings">
+          <summary class="button secondary" data-i18n="works.settings">设置</summary>
+          <div class="settings-panel panel">
+            <label class="proxy-field">
+              <span data-i18n="field.proxy">代理</span>
+              <input id="proxyInput" value="http://127.0.0.1:7892" placeholder="例如 http://127.0.0.1:7892" data-i18n-placeholder="field.proxyPlaceholder">
+            </label>
+            <label class="check">
+              <input id="fetchInput" type="checkbox">
+              <span data-i18n="action.fetchAfterScan">扫描后抓取官网信息</span>
+            </label>
+            <label class="check">
+              <input id="forceMetricsInput" type="checkbox">
+              <span data-i18n="action.forceMetrics">强制刷新已有指标</span>
+            </label>
+          </div>
+        </details>
+      </div>
+    </header>
 
     <section id="jobPanel" class="panel job-panel" hidden>
       <div class="job-header">
@@ -68,7 +75,6 @@
       <div class="workbench-heading">
         <div>
           <h2 id="searchHeading" data-i18n="search.title">作品检索</h2>
-          <p data-i18n="search.help">同类选项任一匹配，不同分类与关键词同时满足。</p>
         </div>
         <button id="clearAll" class="text-button" type="button" data-i18n="search.clear">清除全部条件</button>
       </div>
@@ -113,19 +119,68 @@
 
     <section id="activeFilters" class="panel active-filters" hidden aria-live="polite"></section>
 
-    <p id="searchError" class="panel search-error" hidden></p>
+    <div id="searchError" class="panel search-error" role="alert" hidden></div>
 
-    <section class="table-wrap">
+    <div class="list-tools">
+      <div class="cover-options">
+        <label><span data-i18n="cover.size">封面尺寸</span>
+          <select id="coverSize">
+            <option value="compact" data-i18n="cover.compact">紧凑 72 × 54</option>
+            <option value="standard" data-i18n="cover.standard" selected>标准 96 × 72</option>
+            <option value="large" data-i18n="cover.large">清晰 120 × 90</option>
+          </select>
+        </label>
+        <label class="check"><input id="coverHover" type="checkbox" checked><span data-i18n="cover.hover">悬停预览</span></label>
+      </div>
+      <p id="summary" role="status" data-i18n="works.loading">正在读取作品…</p>
+    </div>
+    <section class="table-wrap" aria-busy="true">
       <table>
         <thead>
           <tr>
-            <th data-i18n="table.rj">RJ号</th><th data-i18n="table.localTitle">本地标题</th><th data-i18n="table.officialTitle">官网标题</th><th data-i18n="table.circle">社团</th><th data-i18n="table.voiceActors">声优</th><th data-i18n="table.releaseDate">发售日</th><th data-i18n="table.tags">标签</th><th data-i18n="table.sales">总售出数</th><th data-i18n="table.average">平均评分</th><th data-i18n="table.ratingCount">评价人数</th><th data-i18n="table.paths">路径</th><th data-i18n="table.status">状态</th>
+            <th scope="col" data-i18n="table.work">作品</th>
+            <th scope="col" class="secondary-column" data-i18n="table.circle">社团</th>
+            <th scope="col" class="secondary-column" data-i18n="table.voiceActors">声优</th>
+            <th scope="col" class="secondary-column" data-i18n="table.rating">评分</th>
+            <th scope="col" data-i18n="table.dataStatus">资料状态</th>
           </tr>
         </thead>
         <tbody id="worksBody"></tbody>
       </table>
     </section>
+    <nav id="pagination" class="pagination" aria-label="分页" data-i18n-aria="page.label" hidden>
+      <button id="prevPage" class="button secondary" type="button" data-i18n="page.prev">上一页</button>
+      <span id="pageCount" aria-live="polite"></span>
+      <button id="nextPage" class="button secondary" type="button" data-i18n="page.next">下一页</button>
+    </nav>
   </main>
+  <dialog id="workDetails" class="work-details" aria-labelledby="workDetailsTitle">
+    <header class="detail-header">
+      <div><p id="detailRj"></p><h2 id="workDetailsTitle"></h2></div>
+      <button type="button" class="close-button" autofocus aria-label="关闭" data-i18n-aria="common.close">×</button>
+    </header>
+    <div class="detail-body">
+      <section>
+        <h3 data-i18n="detail.paths">本地路径</h3>
+        <div id="detailPaths"></div>
+        <p id="detailPathStatus" role="status"></p>
+        <div id="detailRepair"></div>
+      </section>
+      <div id="detailMetadata"></div>
+    </div>
+  </dialog>
+  <div id="coverPreview" class="cover-preview" aria-hidden="true" hidden><img alt="" referrerpolicy="no-referrer"></div>
+  <dialog id="coverViewer" class="cover-viewer" aria-labelledby="coverViewerTitle">
+    <header class="detail-header">
+      <h2 id="coverViewerTitle"></h2>
+      <button type="button" class="close-button" autofocus aria-label="关闭" data-i18n-aria="common.close">×</button>
+    </header>
+    <div class="cover-art">
+      <img alt="" referrerpolicy="no-referrer">
+      <p data-i18n="cover.unavailable" hidden>封面无法加载</p>
+    </div>
+  </dialog>
+  <script src="/static/library.js"></script>
   <script src="/static/i18n.js"></script>
   <script src="/static/app.js"></script>
 </body>
